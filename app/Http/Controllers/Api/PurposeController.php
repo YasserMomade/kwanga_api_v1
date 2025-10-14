@@ -59,4 +59,46 @@ class PurposeController extends Controller
             ], 401);
         }
     }
+
+    public function updatePurpose(Request $request, $id)
+    {
+        $request->validate([
+            'description' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+
+        $userId = auth()->id();
+
+        try {
+
+            // Buscar o proposito de vida pelo ID
+            $Purpose = Purpose::find($id);
+
+            // Verifica se existe
+            if (!$Purpose) {
+                return response()->json([
+                    'status' => false,
+                    'Message' => 'Proposito não encontrada.'
+                ], 404);
+            }
+
+
+            $Purpose->update([
+                'name' => $request->name,
+                'Message' => $request->description
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'Message' => 'Proposito atualizada com sucesso.',
+                'Purpose' => $Purpose
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'Message' => "Falha ao Atualizar Proposito, volte a tentar mais tarde"
+            ], 401);
+        }
+    }
 }
