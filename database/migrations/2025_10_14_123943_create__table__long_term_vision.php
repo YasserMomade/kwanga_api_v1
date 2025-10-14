@@ -18,6 +18,7 @@ class CreateTableLongTermVision extends Migration
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('lifeArea_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->string('description', 250);
+            $table->string('status');
             $table->date('deadline');
             $table->timestamps();
         });

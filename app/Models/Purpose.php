@@ -14,8 +14,13 @@ class Purpose extends Model
         'user_id',
     ];
 
-    public function user()
+    public function lifeArea()
     {
-        return $this->belongsTo(LifeArea::class);
+        return $this->belongsTo(LifeArea::class,'lifeArea_id');
+    }
+
+     public function user()
+    {
+        return $this->belongsTo(User::class,'user_id');
     }
 }

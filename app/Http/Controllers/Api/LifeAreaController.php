@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\LifeArea;
 use Exception;
 use Illuminate\Http\Request;
@@ -98,91 +99,101 @@ class LifeAreaController extends Controller
         }
     }
 
-    public function updateAreaLife(Request $request, $id)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string'
+   public function updateAreaLife(Request $request, $id)
+{
+    $request->validate([
+        'designation' => 'required|string|max:255',
+        'icon_path' => 'required|string'
+    ]);
+
+    DB::beginTransaction();
+
+    $user = JWTAuth::parseToken()->authenticate();
+    $userId =  $user->id;
+
+    try {
+        $lifeArea = LifeArea::find($id);
+
+        if (!$lifeArea) {
+            return response()->json([
+                'status' => false,
+                'Message' => 'Área de vida não encontrada.'
+            ], 404);
+        }
+
+        if ($lifeArea->user_id !== $userId || $lifeArea->is_default) {
+            return response()->json([
+                'status' => false,
+                'Message' => 'Você não tem permissão para editar esta área de vida.'
+            ], 403);
+        }
+
+        $lifeArea->update([
+            'designation' => $request->designation,
+            'icon_path' => $request->icon_path
         ]);
 
-        DB::beginTransaction();
+        DB::commit();
 
-        $userId = auth()->id();
+        return response()->json([
+            'status' => true,
+            'Message' => 'Área de vida atualizada com sucesso.',
+            'lifeArea' => $lifeArea
+        ], 200);
+    
+    } catch (Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'Message' => "Falha ao atualizar área da vida, tente novamente mais tarde. Erro: " 
+        ], 500);
+    }
+}
 
-        try {
+public function deleteLifeArea($id)
+{
+    DB::beginTransaction();
 
-            // Buscar a área de vida pelo ID
-            $lifeArea = LifeArea::find($id);
+    try {
+        
+        $user = JWTAuth::parseToken()->authenticate();
+        $userId = $user->id;
 
-            // Verifica se existe
-            if (!$lifeArea) {
-                return response()->json([
-                    'status' => false,
-                    'Message' => 'Área de vida não encontrada.'
-                ], 404);
-            }
+        $lifeArea = LifeArea::find($id);
 
-            //Verifica se a area da vida pode ser editada ou seja nao e default
-            if ($lifeArea->user_id !== $userId || $lifeArea->is_default) {
-                return response()->json([
-                    'status' => false,
-                    'Message' => 'Você não tem permissão para editar esta área de vida.'
-                ], 403);
-            }
-
-
-            $lifeArea->update([
-                'name' => $request->name,
-                'Message' => $request->description
-            ]);
-
+        if (!$lifeArea) {
             return response()->json([
-                'status' => true,
-                'Message' => 'Área de vida atualizada com sucesso.',
-                'lifeArea' => $lifeArea
-            ], 200);
-        } catch (Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao Atualizar area da  vida, volte a tentar mais tarde" . $e->getMessage()
-            ], 401);
+                'status' => false,
+                'Message' => 'Área de vida não encontrada.'
+            ], 404);
         }
+
+       
+        if ($lifeArea->user_id !== $userId || $lifeArea->is_default) {
+            return response()->json([
+                'status' => false,
+                'Message' => 'Você não tem permissão para apagar esta área de vida.'
+            ], 403);
+        }
+
+        
+        $lifeArea->delete();
+        DB::commit();
+
+        return response()->json([
+            'status' => true,
+            'Message' => 'Área de vida deletada com sucesso.'
+        ], 200);
+
+    } catch (Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'Message' => "Falha ao deletar a área da vida. Erro: " 
+        ], 500);
     }
+}
 
 
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\LifeArea  $lifeArea
-     * @return \Illuminate\Http\Response
-     */
-    public function show(LifeArea $lifeArea)
-    {
-        //
-    }
 
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\LifeArea  $lifeArea
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, LifeArea $lifeArea)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\LifeArea  $lifeArea
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(LifeArea $lifeArea)
-    {
-        //
-    }
 }

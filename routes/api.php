@@ -1,41 +1,35 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\api\UserController;
-use App\Http\Controllers\LifeAreaController;
-use App\Http\Controllers\PurposeController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\LifeAreaController;
+use App\Http\Controllers\Api\PurposeController;
+
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
 
-Route::get('/users', [UserController::class, 'index'])->name("getAllUsers");
-Route::post('/users/sign_up', [AuthController::class, 'createUser'])->name("createUser");
-Route::post('/verifyEmail', [AuthController::class, 'verifyEmail'])->name('verifyEmail');
-Route::post('/users/login', [AuthController::class, 'login'])->name('userLogin');
-Route::post('/users/logout', [AuthController::class, 'logout'])->name('userLogout');
+Route::get('/user', [UserController::class, 'index'])->name("getAllUsers");
+Route::post('/user/sign_up', [AuthController::class, 'createUser'])->name("createUser");
+Route::post('/user/verifyEmail', [AuthController::class, 'verifyEmail'])->name('verifyEmail');
+Route::post('/user/login', [AuthController::class, 'login'])->name('userLogin');
+Route::post('/user/logout', [AuthController::class, 'logout'])->name('userLogout');
 
 
-Route::post('/users/lifeArea', [LifeAreaController::class, 'create']);
 Route::post('/adm/lifeArea', [LifeAreaController::class, 'createAdm']);
 Route::get('/lifeAreas/default', [LifeAreaController::class, 'index']);
-Route::get('/LifeAreaByUser', [LifeAreaController::class, 'getLifeAreasByUser']);
-Route::put('/updateLifeArea/{id}', [LifeAreaController::class, 'updateAreaLife']);
-
 
 
 
 Route::middleware(['auth:api'])->group(function () {
-    Route::get('/LifeAreaByUser/{id}', [LifeAreaController::class, 'getLifeAreasByUser']);
-    Route::put('/updateLifeArea/{id}', [LifeAreaController::class, 'updateAreaLife']);
-    Route::POST('/users/purpose', [PurposeController::class, 'createPurpose']);
-    Route::get('/users/purpose', [PurposeController::class, 'index']);
+    //Area de Vida
+    Route::post('/user/lifeArea', [LifeAreaController::class, 'create']);
+    Route::get('/user/LifeArea', [LifeAreaController::class, 'getLifeAreasByUser']);
+    Route::put('/user/updateLifeArea/{id}', [LifeAreaController::class, 'updateAreaLife']);
+    Route::delete('/user/deleteLifeArea/{id}', [LifeAreaController::class, 'deleteLifeArea']);
+
+    //Proposito
+    Route::post('/user/purpose', [PurposeController::class, 'store']);
+    Route::get('/user/purpose', [PurposeController::class, 'index']);
+    Route::put('/user/purpose/{id}', [PurposeController::class, 'update']);
+    Route::delete('/user/purpose/{id}', [PurposeController::class, 'destroy']);
 });

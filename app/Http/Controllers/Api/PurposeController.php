@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Purpose;
 use Exception;
 use Illuminate\Http\Request;
@@ -12,29 +13,64 @@ class PurposeController extends Controller
 {
 
 
-
-    public function index()
-    {
+public function index()
+{
+    try {
+        // Autenticar user via token
         $user = JWTAuth::parseToken()->authenticate();
-        $userId = $user->id;
 
-        $purposes = Purpose::where('user_id', $userId)->get();
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Usuário não autenticado.'
+            ], 401);
+        }
+
+        // Buscar propositos do User logado
+        $purposes = Purpose::where('user_id', $user->id)
+        ->with(['lifeArea:id,designation'])->get();
 
         return response()->json([
             'status' => true,
             'purposes' => $purposes
         ], 200);
+
+    } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Token expirado.'
+        ], 401);
+
+    } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Token inválido.'
+        ], 401);
+
+    } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Token nao encontrado.'
+        ], 400);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Ocorreu um erro inesperado.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
-    public function createPurpose(Request $request)
+
+    public function store(Request $request)
     {
-
-
         $request->validate([
             'description' => 'required|string|max:250',
             'areaLife_id' => 'required'
         ]);
 
+        DB::beginTransaction();
 
         try {
 
@@ -47,11 +83,33 @@ class PurposeController extends Controller
 
             ]);
 
+            DB::commit();
+
             return response()->json([
                 'status' => true,
                 'massage' => 'Proposito Salvo com sucesso',
                 'lifeArea' => $purpose
             ], 200);
+
+
+         }catch(\Tymon\JWTAuth\Exceptions\TokenExpiredException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\TokenInvalidException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token inválido.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\JWTException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token nao encontrado.'
+            ], 400);
+
         } catch (Exception   $e) {
             DB::rollBack();
             return response()->json([
@@ -60,23 +118,24 @@ class PurposeController extends Controller
         }
     }
 
-    public function updatePurpose(Request $request, $id)
+    public function update(Request $request, $id)
     {
         $request->validate([
-            'description' => 'nullable|string'
+            'description' => 'required|string',
+             'lifeArea_id' => 'required'
         ]);
 
         DB::beginTransaction();
-
-        $userId = auth()->id();
-
         try {
 
+            $user = JWTAuth::parseToken()->authenticate();
             // Buscar o proposito de vida pelo ID
-            $Purpose = Purpose::find($id);
+
+            $purpose = Purpose::where('id',$id)->where('user_id',$user->id)->first();
+
 
             // Verifica se existe
-            if (!$Purpose) {
+            if (!$purpose) {
                 return response()->json([
                     'status' => false,
                     'Message' => 'Proposito não encontrada.'
@@ -84,21 +143,101 @@ class PurposeController extends Controller
             }
 
 
-            $Purpose->update([
-                'name' => $request->name,
-                'Message' => $request->description
+            $purpose->update([
+                'description' => $request->description,
+                'lifeArea_id' => $request->lifeArea_id,
             ]);
+
+            DB::commit();
 
             return response()->json([
                 'status' => true,
                 'Message' => 'Proposito atualizada com sucesso.',
-                'Purpose' => $Purpose
+                'Purpose' => $purpose
             ], 200);
-        } catch (Exception $e) {
+
+
+        }catch(\Tymon\JWTAuth\Exceptions\TokenExpiredException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\TokenInvalidException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token inválido.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\JWTException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token nao encontrado.'
+            ], 400);
+
+        }
+         catch (Exception $e) {
             DB::rollBack();
             return response()->json([
-                'Message' => "Falha ao Atualizar Proposito, volte a tentar mais tarde"
+                'Message' => "Falha ao Atualizar Proposito, volte a tentar mais tarde".$e->getMessage()
             ], 401);
         }
     }
+
+
+    public function destroy($id) {
+
+        DB::beginTransaction();
+
+        try{
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $purpose = Purpose::where('id',$id)->where('user_id',$user->id)->first();
+
+            if(!$purpose){
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Proposito não encontrado.'
+                ], 404);
+            }
+
+            $purpose->delete();
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Proposito deletado com sucesso.'
+            ], 200);
+
+        }catch(\Tymon\JWTAuth\Exceptions\TokenExpiredException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\TokenInvalidException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token inválido.'
+            ], 401);
+
+        }catch(\Tymon\JWTAuth\Exceptions\JWTException $e){
+            return response()->json([
+                'status' => false,
+                'message' => 'Token nao encontrado.'
+            ], 400);
+
+        }
+
+        catch(Exception $e){
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Falha ao deletar Proposito, volte a tentar mais tarde.'
+            ], 500);
+        }
+
+    }
+
+
 }
