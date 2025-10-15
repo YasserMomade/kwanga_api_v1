@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\LongTermVision;
+use App\Models\AnnualGoal;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
-class LongTermVisionController extends Controller
+class AnnualGoalController extends Controller
 {
 
     public function index()
@@ -26,13 +26,12 @@ class LongTermVisionController extends Controller
                 ], 401);
             }
 
-
-            $longTermVision = LongTermVision::where('user_id', $user->id)
-                ->with(['lifeArea:id,designation,icon_path'])->get();
+            $annualGoal = AnnualGoal::where('user_id', $user->id)
+                ->with(['longTermVision:id,description'])->get();
 
             return response()->json([
                 'status' => true,
-                'long Term Vision' => $longTermVision
+                'annual goals' => $annualGoal
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -53,47 +52,40 @@ class LongTermVisionController extends Controller
 
             $user = JWTAuth::parseToken()->authenticate();
 
-            $longTermVision = LongTermVision::create([
+            $annualGoal = AnnualGoal::create([
                 'user_id' =>  $user->id,
-                'lifeArea_id' => $request->lifeArea_id,
+                'longTermVision_id' => $request->longTermVision_id,
                 'description' => $request->description,
+                'year' => $request->year,
                 'status' => $request->status,
-                'deadline' => $request->deadline
             ]);
 
             DB::commit();
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Visão a Longo Prazo Criada com Secesso',
-                'Long term vision' => $longTermVision
+                'massage' => 'Objectivo anual Criado com Secesso',
+                'Annual goals' => $annualGoal
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
         } catch (Exception   $e) {
             DB::rollBack();
+
+
             return response()->json([
-                'Message' => "Falha ao criar Proposito, volte a tentar mais tarde",
+
+                'user_id' =>  $user->id,
+                'longTermVision_id' => $request->longTermVision_id,
+                'description' => $request->description,
+                'status' => $request->status,
+                'year' => $request->year
+            ]);
+            return response()->json([
+                'Message' => "Falha ao criar objectivo anual, volte a tentar mais tarde",
                 'error' => $e->getMessage()
-            ], 401);
+            ], 500);
         }
     }
 
-
-    public function show($id) {}
 
     public function update(Request $request, $id)
     {
@@ -103,20 +95,21 @@ class LongTermVisionController extends Controller
         try {
             DB::beginTransaction();
 
-            $longTermVision = LongTermVision::where('id', $id)->where('user_id', $userId)->first();
+            $annualGoal = AnnualGoal::where('id', $id)->where('user_id', $userId)->first();
 
-            if (!$longTermVision) {
+            if (!$annualGoal) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Visão a Longo Prazo não encontrada.'
+                    'Message' => 'Objectivo anual não encontrada.'
                 ], 404);
             }
 
-            $longTermVision->update([
-                'lifeArea_id' => $request->lifeArea_id,
+            $annualGoal->update([
+                'user_id' =>  $user->id,
+                'longTermVision_id' => $request->longTermVision_id,
                 'description' => $request->description,
                 'status' => $request->status,
-                'deadline' => $request->deadline
+                'year' => $request->year
             ]);
 
 
@@ -126,22 +119,17 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Visão a Longo Prazo atualizada com sucesso.',
-                'Visão a Longo Prazo' => $longTermVision
+                'Message' => 'Objectivo anual atualizada com sucesso.',
+                'Objectivo anual' => $annualGoal
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
-                'Message' => "Falha ao atualizar Visão a Longo Prazo, tente novamente mais tarde.",
+                'Message' => "Falha ao atualizar Objectivo anual, tente novamente mais tarde.",
                 'Erro' => $e->getMessage()
             ], 500);
         }
     }
-
-
-
-
-
 
     public function destroy($id)
     {
@@ -150,29 +138,29 @@ class LongTermVisionController extends Controller
         try {
 
             $user = JWTAuth::parseToken()->authenticate();
-            $userId = $user->id;
 
-            $longTermVision = longTermVision::find($id);
 
-            if (!$longTermVision) {
+            $annualGoal = AnnualGoal::find($id);
+
+            if (!$annualGoal) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Visão a Longo Prazo não encontrada.'
+                    'Message' => 'Objectivo anual não encontrada.'
                 ], 404);
             }
 
 
-            $longTermVision->delete();
+            $annualGoal->delete();
             DB::commit();
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Visão a Longo Prazo com sucesso.'
+                'Message' => 'Objectivo anual eliminado com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
-                'Message' => "Falha ao deletar a Visão a Longo Prazo.",
+                'Message' => "Falha ao deletar o Objectivo anual.",
                 'erro' => $e->getMessage()
             ], 500);
         }

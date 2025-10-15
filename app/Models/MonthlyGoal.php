@@ -5,18 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Purpose extends Model
+class MonthlyGoal extends Model
 {
     protected $fillable = [
 
         'description',
-        'lifeArea_id',
+        'annualGoal_id',
         'user_id',
+        'month',
+        'status'
     ];
 
-    public function lifeArea()
+    public function longTermVision()
     {
-        return $this->belongsTo(LifeArea::class, 'lifeArea_id');
+        return $this->belongsTo(AnnualGoal::class, 'annualGoals_id');
     }
 
     public function user()
