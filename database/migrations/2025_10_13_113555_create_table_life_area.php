@@ -30,6 +30,6 @@ class CreateTableLifeArea extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('table_life_area');
+        // Schema::dropIfExists('table_life_area');
     }
 }

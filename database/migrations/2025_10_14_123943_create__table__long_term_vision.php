@@ -31,6 +31,6 @@ class CreateTableLongTermVision extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('_table__long_term_vision');
+        // Schema::dropIfExists('_table__long_term_vision');
     }
 }

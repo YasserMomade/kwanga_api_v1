@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LifeAreaController;
 use App\Http\Controllers\Api\LongTermVisionController;
 use App\Http\Controllers\Api\MonthlyGoalController;
+use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\PurposeController;
 use App\Models\LongTermVision;
 use Illuminate\Support\Facades\Route;
@@ -81,12 +82,24 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [AnnualGoalController::class, 'destroy'])->name('annualGoal.delete');
         });
 
+        //Objectivos mensais
+
         Route::prefix('monthly-goals')->group(function () {
 
             Route::post('/', [MonthlyGoalController::class, 'create'])->name('MonthlyGoal.create');
             Route::get('/', [MonthlyGoalController::class, 'index'])->name('MonthlyGoal.index');
             Route::put('/{id}', [MonthlyGoalController::class, 'update'])->name('MonthlyGoal.update');
             Route::delete('/{id}', [MonthlyGoalController::class, 'destroy'])->name('MonthlyGoal.delete');
+        });
+
+        //Projetos
+
+         Route::prefix('projects')->group(function () {
+
+            Route::post('/', [ProjectController::class, 'create'])->name('Project.create');
+            Route::get('/', [ProjectController::class, 'index'])->name('Project.index');
+            Route::put('/{id}', [ProjectController::class, 'update'])->name('Project.update');
+            Route::delete('/{id}', [ProjectController::class, 'destroy'])->name('Project.delete');
         });
     });
 });

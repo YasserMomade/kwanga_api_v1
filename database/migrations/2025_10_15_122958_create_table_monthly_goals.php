@@ -15,7 +15,7 @@ B<?php
         {
             Schema::create('monthly_goals', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('annualGoals_id')->constrained('annual_goals')->nullable()->onDelete('cascade')->onUpdate('cascade');
+                $table->foreignId('annual_goals_id')->constrained('annual_goals')->nullable()->onDelete('cascade')->onUpdate('cascade');
                 $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
                 $table->string('description', 250);
                 $table->string('status', 50);

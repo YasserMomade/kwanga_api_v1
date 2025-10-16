@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreatePurposesTable extends Migration
+class CreateProjectsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,14 @@ class CreatePurposesTable extends Migration
      */
     public function up()
     {
-        Schema::create('purposes', function (Blueprint $table) {
+        Schema::create('projects', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lifeArea_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
+            $table->string('designation', 255);
+            $table->text('purpose');
+            $table->text('expected_result');
+            $table->string('status', 50);
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
-            $table->string('description', 250);
+            $table->foreignId('monthly_goals_id')->constrained('monthly_goals')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }
@@ -29,6 +32,6 @@ class CreatePurposesTable extends Migration
      */
     public function down()
     {
-        // Schema::dropIfExists('purposes');
+        Schema::dropIfExists('projects');
     }
 }
