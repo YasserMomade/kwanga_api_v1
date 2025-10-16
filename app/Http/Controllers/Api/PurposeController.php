@@ -63,7 +63,7 @@ class PurposeController extends Controller
     {
         $request->validate([
             'description' => 'required|string|max:250',
-            'areaLife_id' => 'required'
+            'life_area_id' => 'required'
         ]);
 
         DB::beginTransaction();
@@ -74,7 +74,7 @@ class PurposeController extends Controller
 
             $purpose = Purpose::create([
                 'user_id' =>  $user->id,
-                'lifeArea_id' => $request->areaLife_id,
+                'life_area_id' => $request->life_area_id,
                 'description' => $request->description,
 
             ]);
@@ -116,7 +116,7 @@ class PurposeController extends Controller
     {
         $request->validate([
             'description' => 'required|string',
-            'lifeArea_id' => 'required'
+            'life_area_id' => 'required'
         ]);
 
 
@@ -140,7 +140,7 @@ class PurposeController extends Controller
 
             $purpose->update([
                 'description' => $request->description,
-                'lifeArea_id' => $request->lifeArea_id,
+                'life_area_id' => $request->life_area_id,
             ]);
 
             DB::commit();

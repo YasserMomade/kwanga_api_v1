@@ -54,7 +54,7 @@ class AnnualGoalController extends Controller
 
             $annualGoal = AnnualGoal::create([
                 'user_id' =>  $user->id,
-                'longTermVision_id' => $request->longTermVision_id,
+                'long_term_vision_id' => $request->long_term_vision_id,
                 'description' => $request->description,
                 'year' => $request->year,
                 'status' => $request->status,
@@ -71,14 +71,7 @@ class AnnualGoalController extends Controller
             DB::rollBack();
 
 
-            return response()->json([
 
-                'user_id' =>  $user->id,
-                'longTermVision_id' => $request->longTermVision_id,
-                'description' => $request->description,
-                'status' => $request->status,
-                'year' => $request->year
-            ]);
             return response()->json([
                 'Message' => "Falha ao criar objectivo anual, volte a tentar mais tarde",
                 'error' => $e->getMessage()
@@ -106,7 +99,7 @@ class AnnualGoalController extends Controller
 
             $annualGoal->update([
                 'user_id' =>  $user->id,
-                'longTermVision_id' => $request->longTermVision_id,
+                'long_term_vision_id' => $request->long_term_vision_id,
                 'description' => $request->description,
                 'status' => $request->status,
                 'year' => $request->year

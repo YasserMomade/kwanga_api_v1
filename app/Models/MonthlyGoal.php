@@ -10,15 +10,15 @@ class MonthlyGoal extends Model
     protected $fillable = [
 
         'description',
-        'annualGoal_id',
+        'annual_goals_id',
         'user_id',
         'month',
         'status'
     ];
 
-    public function longTermVision()
+    public function AnnualGoals()
     {
-        return $this->belongsTo(AnnualGoal::class, 'annualGoals_id');
+        return $this->belongsTo(AnnualGoal::class, 'annual_goals_id');
     }
 
     public function user()

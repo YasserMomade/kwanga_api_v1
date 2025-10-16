@@ -12,7 +12,7 @@ class AnnualGoal extends Model
     protected $fillable = [
 
         'description',
-        'longTermVision_id',
+        'long_term_vision_id',
         'user_id',
         'year',
         'status'
@@ -20,7 +20,7 @@ class AnnualGoal extends Model
 
     public function longTermVision()
     {
-        return $this->belongsTo(LongTermVision::class, 'longTermVision_id');
+        return $this->belongsTo(LongTermVision::class, 'long_term_vision_id');
     }
 
     public function user()

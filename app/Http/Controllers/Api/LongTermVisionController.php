@@ -55,7 +55,7 @@ class LongTermVisionController extends Controller
 
             $longTermVision = LongTermVision::create([
                 'user_id' =>  $user->id,
-                'lifeArea_id' => $request->lifeArea_id,
+                'life_area_id' => $request->life_area_id,
                 'description' => $request->description,
                 'status' => $request->status,
                 'deadline' => $request->deadline
@@ -86,7 +86,7 @@ class LongTermVisionController extends Controller
         } catch (Exception   $e) {
             DB::rollBack();
             return response()->json([
-                'Message' => "Falha ao criar Proposito, volte a tentar mais tarde",
+                'Message' => "Falha ao criar Visao a longo prazo, volte a tentar mais tarde",
                 'error' => $e->getMessage()
             ], 401);
         }
@@ -113,7 +113,7 @@ class LongTermVisionController extends Controller
             }
 
             $longTermVision->update([
-                'lifeArea_id' => $request->lifeArea_id,
+                'life_area_id' => $request->life_area_id,
                 'description' => $request->description,
                 'status' => $request->status,
                 'deadline' => $request->deadline

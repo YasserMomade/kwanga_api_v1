@@ -7,14 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class project extends Model
 {
-   
+
     protected $fillable = [
         'designation',
         'purpose',
         'expected_result',
         'status',
         'user_id',
-        'monthly_Goal_id',
+        'monthly_goals_id',
     ];
 
     public function user()
@@ -22,8 +22,8 @@ class project extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function monthlyGoal()
+    public function monthlyGoals()
     {
-        return $this->belongsTo(MonthlyGoal::class, 'monthly_Goal_id');
+        return $this->belongsTo(MonthlyGoal::class, 'monthly_goals_id');
     }
 }

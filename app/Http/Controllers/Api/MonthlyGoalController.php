@@ -52,7 +52,7 @@ class MonthlyGoalController extends Controller
 
             $monthlyGoal = MonthlyGoal::create([
                 'user_id' =>  $user->id,
-                'annualGoals_id' => $request->annualGoals_id,
+                'annual_goals_id' => $request->annual_goals_id,
                 'description' => $request->description,
                 'month' => $request->month,
                 'status' => $request->status,

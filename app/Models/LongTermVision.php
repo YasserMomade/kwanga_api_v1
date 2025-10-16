@@ -10,7 +10,7 @@ class LongTermVision extends Model
     protected $fillable = [
 
         'user_id',
-        'lifeArea_id',
+        'life_area_id',
         'description',
         'deadline',
         'status'
@@ -23,6 +23,6 @@ class LongTermVision extends Model
 
     public function lifeArea()
     {
-        return $this->belongsTo(LifeArea::class, 'lifeArea_id');
+        return $this->belongsTo(LifeArea::class, 'life_area_id');
     }
 }
