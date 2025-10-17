@@ -34,21 +34,59 @@ class PurposeController extends Controller
                 'status' => true,
                 'purposes' => $purposes
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Ocorreu um erro inesperado.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            // Autenticar user via token
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Usuário não autenticado.'
+                ], 401);
+            }
+
+
+            // Buscar propositos especifico, do User logado
+            $purposes = Purpose::where('id', $id)->where('user_id', $user->id)
+                ->with(['lifeArea:id,designation'])->first();
+
+            if (!$purposes) {
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Proposito não foi encontrada'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'description' => $purposes->description,
+                'area of life' => $purposes->lifeArea->designation,
+
+            ], 200);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -86,21 +124,12 @@ class PurposeController extends Controller
                 'massage' => 'Proposito Salvo com sucesso',
                 'purpose' => $purpose
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
         } catch (Exception   $e) {
             DB::rollBack();
             return response()->json([
@@ -150,21 +179,12 @@ class PurposeController extends Controller
                 'Message' => 'Proposito atualizada com sucesso.',
                 'Purpose' => $purpose
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -198,21 +218,12 @@ class PurposeController extends Controller
                 'status' => true,
                 'message' => 'Proposito deletado com sucesso.'
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([

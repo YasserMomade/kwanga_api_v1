@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class RenemAnnualGoalsTable extends Migration
+class RemoveColumsToProjectsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,7 +13,9 @@ class RenemAnnualGoalsTable extends Migration
      */
     public function up()
     {
-        Schema::rename('table_annual_goals', 'annual_goals');
+        Schema::table('projects', function (Blueprint $table) {
+            $table->dropColumn('status');
+        });
     }
 
     /**
@@ -23,6 +25,8 @@ class RenemAnnualGoalsTable extends Migration
      */
     public function down()
     {
-        //
+        Schema::table('projects', function (Blueprint $table) {
+            $table->dropColumn('status');
+        });
     }
 }

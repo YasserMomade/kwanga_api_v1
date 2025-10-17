@@ -14,6 +14,8 @@ class project extends Model
         'expected_result',
         'status',
         'user_id',
+        'priority',
+        'first_step',
         'monthly_goals_id',
     ];
 
@@ -25,5 +27,10 @@ class project extends Model
     public function monthlyGoals()
     {
         return $this->belongsTo(MonthlyGoal::class, 'monthly_goals_id');
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
     }
 }

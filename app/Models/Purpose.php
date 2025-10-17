@@ -10,13 +10,13 @@ class Purpose extends Model
     protected $fillable = [
 
         'description',
-        'lifeArea_id',
+        'life_area_id',
         'user_id',
     ];
 
     public function lifeArea()
     {
-        return $this->belongsTo(LifeArea::class, 'lifeArea_id');
+        return $this->belongsTo(LifeArea::class, 'life_area_id');
     }
 
     public function user()

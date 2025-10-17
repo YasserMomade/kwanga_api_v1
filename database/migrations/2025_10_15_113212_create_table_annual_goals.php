@@ -13,7 +13,7 @@ class CreateTableAnnualGoals extends Migration
      */
     public function up()
     {
-        Schema::create('table_annual_goals', function (Blueprint $table) {
+        Schema::create('annual_goals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('long_term_vision_id')->constrained('long_term_visions')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');

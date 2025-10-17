@@ -114,6 +114,39 @@ class AuthController extends Controller
         ]);
     }
 
+    public function me()
+    {
+
+        try {
+
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'utilizador não foi encontrado'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'email' => $user->email
+            ], 200);
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Ero interno, volte a tentar mais tarde.'
+            ]);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ], 401);
+        }
+    }
+
     public function logout(Request $request)
     {
         try {

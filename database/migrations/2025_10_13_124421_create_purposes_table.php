@@ -15,7 +15,7 @@ class CreatePurposesTable extends Migration
     {
         Schema::create('purposes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lifeArea_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('life_area_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->string('description', 250);
             $table->timestamps();

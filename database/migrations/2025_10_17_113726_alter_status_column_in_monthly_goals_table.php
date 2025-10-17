@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateTasksTable extends Migration
+class AlterStatusColumnInMonthlyGoalsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,8 @@ class CreateTasksTable extends Migration
      */
     public function up()
     {
-        Schema::create('tasks', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('monthly_goals', function (Blueprint $table) {
+            $table->boolean('status')->default(false)->change();
         });
     }
 
@@ -26,6 +25,8 @@ class CreateTasksTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('tasks');
+        Schema::table('monthly_goals', function (Blueprint $table) {
+            //
+        });
     }
 }

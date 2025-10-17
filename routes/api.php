@@ -39,7 +39,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('user')->group(function () {
 
-            Route::get('/user', [UserController::class, 'show'])->name("users.show");
+            Route::get('/', [AuthController::class, 'me'])->name("users.me");
         });
 
         // Aresa da vida
@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [LifeAreaController::class, 'create'])->name('lifeAreas.store');
             Route::get('/', [LifeAreaController::class, 'getLifeAreasByUser'])->name('lifeAreas.byUser');
+            Route::get('/{id}', [LifeAreaController::class, 'showLifeAreas'])->name('lifeAreasDetails.byUser');
             Route::put('/{id}', [LifeAreaController::class, 'updateAreaLife'])->name('lifeAreas.update');
             Route::delete('/{id}', [LifeAreaController::class, 'deleteLifeArea'])->name('lifeAreas.delete');
         });
@@ -58,6 +59,7 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [PurposeController::class, 'create'])->name('purposes.store');
             Route::get('/', [PurposeController::class, 'index'])->name('purposes.index');
+            Route::get('/{id}', [PurposeController::class, 'show'])->name('purposes.show');
             Route::put('/{id}', [PurposeController::class, 'update'])->name('purposes.update');
             Route::delete('/{id}', [PurposeController::class, 'destroy'])->name('purposes.delete');
         });
@@ -68,6 +70,7 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [LongTermVisionController::class, 'create'])->name('longTermVision.create');
             Route::get('/', [LongTermVisionController::class, 'index'])->name('longTermVision.index');
+            Route::get('/{id}', [LongTermVisionController::class, 'show'])->name('longTermVision.show');
             Route::put('/{id}', [LongTermVisionController::class, 'update'])->name('longTermVision.update');
             Route::delete('/{id}', [LongTermVisionController::class, 'destroy'])->name('longTermVision.delete');
         });
@@ -88,16 +91,18 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [MonthlyGoalController::class, 'create'])->name('MonthlyGoal.create');
             Route::get('/', [MonthlyGoalController::class, 'index'])->name('MonthlyGoal.index');
+            Route::get('/{id}', [MonthlyGoalController::class, 'show'])->name('MonthlyGoal.show');
             Route::put('/{id}', [MonthlyGoalController::class, 'update'])->name('MonthlyGoal.update');
             Route::delete('/{id}', [MonthlyGoalController::class, 'destroy'])->name('MonthlyGoal.delete');
         });
 
         //Projetos
 
-         Route::prefix('projects')->group(function () {
+        Route::prefix('projects')->group(function () {
 
             Route::post('/', [ProjectController::class, 'create'])->name('Project.create');
             Route::get('/', [ProjectController::class, 'index'])->name('Project.index');
+            Route::get('/{id}', [ProjectController::class, 'show'])->name('Project.index');
             Route::put('/{id}', [ProjectController::class, 'update'])->name('Project.update');
             Route::delete('/{id}', [ProjectController::class, 'destroy'])->name('Project.delete');
         });

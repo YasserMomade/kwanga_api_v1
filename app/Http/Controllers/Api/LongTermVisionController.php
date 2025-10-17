@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\LifeArea;
 use App\Models\LongTermVision;
 use Exception;
 use Illuminate\Http\Request;
@@ -93,7 +94,50 @@ class LongTermVisionController extends Controller
     }
 
 
-    public function show($id) {}
+    public function show($id)
+    {
+
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Usuário não autenticado.'
+                ], 401);
+            }
+
+            $longTermVision = LongTermVision::where('id', $id)->where('user_id', $user->id)
+                ->with(['LifeArea:id,designation'])->first();
+
+
+            if (!$longTermVision) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Visao a longo prazo não foi encontrada'
+                ], 404);
+            }
+            return response()->json([
+                'status' => true,
+                'description' => $longTermVision->description,
+                'deadline' => $longTermVision->deadline,
+                'area of life' => $longTermVision->lifeArea->designation,
+
+            ], 200);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'TOken expirado ou invalido! Faca login novamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Ocorreu um erro inesperado.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function update(Request $request, $id)
     {
@@ -135,6 +179,11 @@ class LongTermVisionController extends Controller
                 'Message' => "Falha ao atualizar Visão a Longo Prazo, tente novamente mais tarde.",
                 'Erro' => $e->getMessage()
             ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
         }
     }
 
@@ -150,9 +199,10 @@ class LongTermVisionController extends Controller
         try {
 
             $user = JWTAuth::parseToken()->authenticate();
-            $userId = $user->id;
 
-            $longTermVision = longTermVision::find($id);
+
+            $longTermVision = longTermVision::where($id, $id)
+                ->where('user_id', $user->id)->first();
 
             if (!$longTermVision) {
                 return response()->json([
@@ -175,6 +225,11 @@ class LongTermVisionController extends Controller
                 'Message' => "Falha ao deletar a Visão a Longo Prazo.",
                 'erro' => $e->getMessage()
             ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
         }
     }
 }

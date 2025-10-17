@@ -72,6 +72,138 @@ class MonthlyGoalController extends Controller
                 'Message' => "Falha ao criar objectivo anual, volte a tentar mais tarde",
                 'error' => $e->getMessage()
             ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $monthlyGoal = MonthlyGoal::where('id', $id)
+                ->where('user_id', $user->id)
+                ->with(['annualGoal.longTermVision.lifeArea:id,designation'])
+                ->first();
+
+            if (!$monthlyGoal) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Objetivo mensal não encontrado'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'Monthly goal' => $monthlyGoal->description,
+                'Annual goal' => $monthlyGoal->annualGoal->description,
+                'Life Area' => $monthlyGoal->annualGoal->longTermVision->lifeArea->designation
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Ocorreu um erro inesperado.',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $monthlyGoal = MonthlyGoal::where('id', $id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$monthlyGoal) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Objetivo mensal não encontrado.'
+                ], 404);
+            }
+
+            $monthlyGoal->update([
+                'annual_goals_id' => $request->annual_goals_id ?? $monthlyGoal->annual_goals_id,
+                'description' => $request->description ?? $monthlyGoal->description,
+                'month' => $request->month ?? $monthlyGoal->month,
+                'status' => $request->status ?? $monthlyGoal->status,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Objetivo mensal atualizado com sucesso',
+                'Monthly goal' => $monthlyGoal
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Falha ao atualizar objetivo mensal, tente novamente mais tarde',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
+        }
+    }
+
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $monthlyGoal = MonthlyGoal::where('id', $id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$monthlyGoal) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Objetivo mensal não encontrado'
+                ], 404);
+            }
+
+            $monthlyGoal->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Objetivo mensal apagado com sucesso'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Falha ao apagar objetivo mensal, tente novamente mais tarde',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Token expirado ou inválido! Faça login novamente'
+            ], 401);
         }
     }
 }
