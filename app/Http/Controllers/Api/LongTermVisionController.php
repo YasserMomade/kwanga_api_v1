@@ -3,59 +3,62 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\LifeArea;
 use App\Models\LongTermVision;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LongTermVisionController extends Controller
 {
 
-    public function index()
+    /**
+     * Listar todas as visoes a longo prazo do utilizador autenticado.
+     */
+
+    public function index(): JsonResponse
     {
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
-
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
-            }
+            $userId = auth()->id();
 
 
-            $longTermVision = LongTermVision::where('user_id', $user->id)
+            $longTermVision = LongTermVision::where('user_id', $userId)
                 ->with(['lifeArea:id,designation,icon_path'])->get();
 
             return response()->json([
                 'status' => true,
-                'long Term Vision' => $longTermVision
+                'data' => $longTermVision
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
     }
 
+    /**
+     * Cria uma nova visso a longo prazo.
+     */
 
-    public function create(Request $request)
+    public function store(Request $request): JsonResponse
     {
+
+        $request->validate([
+            'life_area_id' => 'required|exists:life_areas,id',
+            'description' => 'required|string|max:255',
+            'status' => 'nullable|string|max:50',
+            'deadline' => 'nullable|date'
+        ]);
+
 
         DB::beginTransaction();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $longTermVision = LongTermVision::create([
-                'user_id' =>  $user->id,
+                'user_id' =>  $userId,
                 'life_area_id' => $request->life_area_id,
                 'description' => $request->description,
                 'status' => $request->status,
@@ -66,93 +69,73 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Visão a Longo Prazo Criada com Secesso',
-                'Long term vision' => $longTermVision
-            ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token inválido.'
-            ], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token nao encontrado.'
-            ], 400);
+                'message' => 'Visão a Longo Prazo Criada com Secesso',
+                'data' => $longTermVision
+            ], 201);
         } catch (Exception   $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao criar Visao a longo prazo, volte a tentar mais tarde",
-                'error' => $e->getMessage()
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
+    /**
+     * Mostra uma visso a longo prazo específica.
+     */
 
-    public function show($id)
+    public function show($id): JsonResponse
     {
 
         try {
-            $user = JWTAuth::parseToken()->authenticate();
 
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
-            }
+            $userId = auth()->id();
 
-            $longTermVision = LongTermVision::where('id', $id)->where('user_id', $user->id)
-                ->with(['LifeArea:id,designation'])->first();
+            $longTermVision = LongTermVision::where('id', $id)->where('user_id', $userId)
+                ->with(['lifeArea:id,designation'])->first();
 
 
             if (!$longTermVision) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Visao a longo prazo não foi encontrada'
+                    'message' => 'Visao a longo prazo não  encontrada'
                 ], 404);
             }
             return response()->json([
                 'status' => true,
-                'description' => $longTermVision->description,
-                'deadline' => $longTermVision->deadline,
-                'area of life' => $longTermVision->lifeArea->designation,
+                'data' => $longTermVision,
 
             ], 200);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Atualiza uma visso a longo prazo existente.
+     */
+
+    public function update(Request $request, $id): JsonResponse
+
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        $userId = $user->id;
+        $request->validate([
+            'life_area_id' => 'required|exists:life_areas,id',
+            'description' => 'required|string|max:255',
+            'status' => 'nullable|string|max:50',
+            'deadline' => 'nullable|date'
+        ]);
+
+
+        DB::beginTransaction();
 
         try {
-            DB::beginTransaction();
+
+            $userId = auth()->id();
 
             $longTermVision = LongTermVision::where('id', $id)->where('user_id', $userId)->first();
 
             if (!$longTermVision) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Visão a Longo Prazo não encontrada.'
+                    'message' => 'Visão a Longo Prazo não encontrada.'
                 ], 404);
             }
 
@@ -170,44 +153,35 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Visão a Longo Prazo atualizada com sucesso.',
-                'Visão a Longo Prazo' => $longTermVision
+                'message' => 'Visão a Longo Prazo atualizada com sucesso.',
+                'data' => $longTermVision
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao atualizar Visão a Longo Prazo, tente novamente mais tarde.",
-                'Erro' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
+    /**
+     * Deletar uma visso a longo prazo.
+     */
 
-
-
-
-
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
-
-            $longTermVision = longTermVision::where($id, $id)
-                ->where('user_id', $user->id)->first();
+            $longTermVision = LongTermVision::where('id', $id)
+                ->where('user_id', $userId)
+                ->first();
 
             if (!$longTermVision) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Visão a Longo Prazo não encontrada.'
+                    'message' => 'Visão a Longo Prazo não encontrada.'
                 ], 404);
             }
 
@@ -217,19 +191,24 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Visão a Longo Prazo com sucesso.'
+                'message' => 'Visão a Longo Prazo eliminada com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao deletar a Visão a Longo Prazo.",
-                'erro' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
+    }
+
+    /**
+     * Resposta de erro padronizada.
+     */
+
+    private function errorResponse(Exception $e): JsonResponse
+    {
+        return response()->json([
+            'status' => false,
+            'message' => "Erro interno, volte a tentar mais tarde.",
+            'error' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
     }
 }

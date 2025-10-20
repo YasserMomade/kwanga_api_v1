@@ -14,7 +14,7 @@ class AlterStatusColumnInMonthlyGoalsTable extends Migration
     public function up()
     {
         Schema::table('monthly_goals', function (Blueprint $table) {
-            $table->boolean('status')->default(false)->change();
+            //$table->boolean('status')->default(false)->change();
         });
     }
 

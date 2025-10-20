@@ -5,55 +5,59 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AnnualGoal;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Facades\JWTAuth;
+
 
 class AnnualGoalController extends Controller
 {
 
-    public function index()
+    /**
+     * Lista todos os objetivos anuais do utilizador autenticado.
+     */
+
+    public function index(): JsonResponse
     {
+
+        $userId = auth()->id();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
-
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
-            }
-
-            $annualGoal = AnnualGoal::where('user_id', $user->id)
+            $annualGoals = AnnualGoal::where('user_id', $userId)
                 ->with(['longTermVision:id,description'])->get();
 
             return response()->json([
                 'status' => true,
-                'annual goals' => $annualGoal
+                'data' => $annualGoals
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
     }
 
+    /**
+     * Cria um novo objetivo anual.
+     */
 
-    public function create(Request $request)
+    public function store(Request $request): JsonResponse
     {
+
+        $request->validate([
+            'long_term_vision_id' => 'required|exists:long_term_visions,id',
+            'description' => 'required|string|max:255',
+            'year' => 'required|integer',
+            'status' => 'nullable|string|max:50'
+        ]);
 
         DB::beginTransaction();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $annualGoal = AnnualGoal::create([
-                'user_id' =>  $user->id,
+                'user_id' =>  $userId,
                 'long_term_vision_id' => $request->long_term_vision_id,
                 'description' => $request->description,
                 'year' => $request->year,
@@ -64,41 +68,68 @@ class AnnualGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Objectivo anual Criado com Secesso',
-                'Annual goals' => $annualGoal
-            ], 200);
+                'message' => 'Objectivo anual Criado com Secesso',
+                'date' => $annualGoal
+            ], 201);
         } catch (Exception   $e) {
             DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
 
+    /**
+     * Mostra um objetivo anual específico.
+     */
+    public function show(int $id): JsonResponse
+    {
+        try {
+            $userId = auth()->id();
 
+            $annualGoal = AnnualGoal::where('id', $id)
+                ->where('user_id', $userId)
+                ->with(['longTermVision.lifeArea:id,designation'])
+                ->first();
+
+            if (!$annualGoal) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Objetivo anual não encontrado.'
+                ], 404);
+            }
 
             return response()->json([
-                'Message' => "Falha ao criar objectivo anual, volte a tentar mais tarde",
-                'error' => $e->getMessage()
-            ], 500);
+                'status' => true,
+                'data' => $annualGoal
+            ], 200);
+        } catch (Exception $e) {
+            return $this->errorResponse($e);
         }
     }
 
 
-    public function update(Request $request, $id)
+    /**
+     * Atualiza um objetivo anual existente.
+     */
+
+    public function update(Request $request, $id): JsonResponse
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        $userId = $user->id;
+        $userId = auth()->id();
+
+        DB::beginTransaction();
 
         try {
-            DB::beginTransaction();
 
             $annualGoal = AnnualGoal::where('id', $id)->where('user_id', $userId)->first();
 
             if (!$annualGoal) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Objectivo anual não encontrada.'
+                    'message' => 'Objectivo anual não encontrada.'
                 ], 404);
             }
 
             $annualGoal->update([
-                'user_id' =>  $user->id,
+                'user_id' =>  $userId,
                 'long_term_vision_id' => $request->long_term_vision_id,
                 'description' => $request->description,
                 'status' => $request->status,
@@ -108,37 +139,37 @@ class AnnualGoalController extends Controller
 
             DB::commit();
 
-            //$longTermVision->load('lifeArea');
-
             return response()->json([
                 'status' => true,
-                'Message' => 'Objectivo anual atualizada com sucesso.',
-                'Objectivo anual' => $annualGoal
+                'message' => 'Objectivo anual atualizada com sucesso.',
+                'data' => $annualGoal
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao atualizar Objectivo anual, tente novamente mais tarde.",
-                'Erro' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
     }
 
-    public function destroy($id)
+    /**
+     * Deleta um objetivo anual.
+     */
+
+    public function destroy($id): JsonResponse
     {
         DB::beginTransaction();
 
+        $userId = auth()->id();
+
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
-
-
-            $annualGoal = AnnualGoal::find($id);
+            $annualGoal = AnnualGoal::where('id', $id)
+                ->where('user_id', $userId)
+                ->first();
 
             if (!$annualGoal) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Objectivo anual não encontrada.'
+                    'message' => 'Objectivo anual não encontrada.'
                 ], 404);
             }
 
@@ -148,14 +179,24 @@ class AnnualGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Objectivo anual eliminado com sucesso.'
+                'message' => 'Objectivo anual eliminado com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao deletar o Objectivo anual.",
-                'erro' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
+    }
+
+    /**
+     * Resposta de erro padronizada.
+     */
+
+    private function errorResponse(Exception $e): JsonResponse
+    {
+        return response()->json([
+            'status' => false,
+            'message' => "Erro interno, volte a tentar mais tarde.",
+            'error' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
     }
 }

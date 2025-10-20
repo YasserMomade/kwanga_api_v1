@@ -12,20 +12,30 @@ use App\Models\User;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
-use Namshi\JOSE\JWT;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-    public function createUser(UserRequest $request): JsonResponse
+
+    /**
+     * Registar novo utilizador
+     */
+
+    public function register(UserRequest $request): JsonResponse
     {
 
         DB::beginTransaction();
 
         try {
-            $verification_code = rand(100000, 999999);
+            $verification_code = random_int(100000, 999999);
+
+            if (User::where('email', $request->email)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este e-mail já está em uso.'
+                ], 409);
+            }
 
             $user = User::create([
                 'email' => $request->email,
@@ -33,52 +43,74 @@ class AuthController extends Controller
                 'verification_code' => $verification_code
             ]);
 
-            Mail::to($user->email)->send(new VerifyEmail($user));
             DB::commit();
 
+            Mail::to($user->email)->send(new VerifyEmail($user));
+
             return response()->json([
-                'Message' => "conta criada. Verifique o seu email para ativar"
+                'status' => true,
+                'message' => "conta criada com sucesso. Verifique o seu email para ativar"
             ], 201);
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
-                'Message' => "Falha ao criar conta, volte a tentar mais tarde" . $e->getMessage()
-            ], 401);
+                'status' => false,
+                'message' => "Erro interno, volte a tentar mais tarde",
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
-    public function verifyEmail(Request $request)
+    /**
+     * Verificar codigo de e-mail
+     */
+
+    public function verifyEmail(Request $request): JsonResponse
     {
 
-        $request->validate([
-            'email' => 'required|email',
-            'code'  => 'required|numeric',
-        ]);
+        try {
+
+            $request->validate([
+                'email' => 'required|email',
+                'code'  => 'required|numeric',
+            ]);
 
 
-        $user = User::where('email', $request->email)
-            ->where('verification_code', $request->code)
-            ->first();
+            $user = User::where('email', $request->email)
+                ->where('verification_code', $request->code)
+                ->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Código inválido ou e-mail não encontrado.'
+                ], 404);
+            }
+
+            $user->update([
+                'email_verified_at' => now(),
+                'verification_code' => null
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'E-mail verificado com sucesso!'
+            ], 200);
+        } catch (Exception $e) {
+
             return response()->json([
                 'status' => false,
-                'mensagem' => 'Código inválido ou e-mail não encontrado.'
-            ], 400);
+                'message' => 'Ero interno, volte a tentar mais tarde.',
+                'error' => $e->getMessage()
+            ]);
         }
-
-        $user->update([
-            'email_verified_at' => Carbon::now(),
-            'verification_code' => null
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'mensagem' => 'E-mail verificado com sucesso!'
-        ], 200);
     }
 
-    public function login(Request $request): JsonResponse
+    /**
+     * Fazer login e gerar token JWT
+     */
+
+    public function login(UserRequest $request): JsonResponse
     {
 
         $credentials = $request->only('email', 'password');
@@ -93,7 +125,8 @@ class AuthController extends Controller
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Erro ao criar o token'
+                'message' => 'Erro ao criar o token',
+                'error' => $e->getMessage()
             ], 500);
         }
 
@@ -108,52 +141,67 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => true,
-            'mensagem' => 'Login efetuado com sucesso',
-            'token' => $token,
-            'utilizador' => $user->only(['id', 'name', 'email'])
-        ]);
+            'message' => 'Login efetuado com sucesso',
+            'data' => [
+                'token' => $token,
+                'user'  => $user->only(['id', 'name', 'email'])
+            ]
+        ], 200);
     }
 
-    public function me()
+    /**
+     * Retornar dados do utilizador autenticado
+     */
+
+    public function me(): JsonResponse
     {
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $user = auth()->user();
 
             if (!$user) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'utilizador não foi encontrado'
+                    'message' => 'utilizador não encontrado'
                 ], 404);
             }
 
             return response()->json([
                 'status' => true,
-                'email' => $user->email
+                'data' => $user->only(['id', 'name', 'email'])
             ], 200);
         } catch (Exception $e) {
 
             return response()->json([
                 'status' => false,
-                'message' => 'Ero interno, volte a tentar mais tarde.'
+                'message' => 'Ero interno, tente novamente mais tarde.',
+                'error' =>  $e->getMessage()
             ]);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
         }
     }
 
-    public function logout(Request $request)
+
+    /**
+     * Fazer logout e invalidar token JWT
+     */
+
+    public function logout(Request $request): JsonResponse
     {
         try {
             JWTAuth::invalidate(JWTAuth::getToken());
-            return response()->json(['status' => true, 'mensagem' => 'Logout efectuado com sucesso!']);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Logout efectuado com sucesso!'
+            ], 200);
         } catch (JWTException $e) {
-            return response()->json(['status' => false, 'mensagem' => 'Erro ao fazer logout.' . $e->getMessage()], 500);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro ao efectuar logout.',
+                'error' =>  $e->getMessage()
+            ], 500);
         }
     }
 }

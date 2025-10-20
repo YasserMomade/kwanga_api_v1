@@ -5,53 +5,59 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MonthlyGoal;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Facades\JWTAuth;
+
 
 class MonthlyGoalController extends Controller
 {
-    public function index()
-    {
 
+    /**
+     * Lista todos os objetivos mensais do utilizador autenticado.
+     */
+
+    public function index(): JsonResponse
+    {
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
-            }
-
-            $monthlyGoal = MonthlyGoal::where('user_id', $user->id)
-                ->with(['AnnualGoals:id,description'])->get();
+            $monthlyGoal = MonthlyGoal::where('user_id', $userId)
+                ->with(['annualGoal:id,description'])->get();
 
             return response()->json([
                 'status' => true,
-                'Monthly goals' => $monthlyGoal
+                'data' => $monthlyGoal
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse($e);
         }
     }
 
-    public function create(Request $request)
+    /**
+     * Cria um novo objetivo mensal.
+     */
+
+    public function store(Request $request)
     {
+
+        $request->validate([
+            'annual_goals_id' => 'required|exists:annual_goals,id',
+            'description' => 'required|string|max:255',
+            'month' => 'required|string|max:20',
+            'status' => 'nullable|string|max:50'
+        ]);
+
 
         DB::beginTransaction();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $monthlyGoal = MonthlyGoal::create([
-                'user_id' =>  $user->id,
+                'user_id' =>  $userId,
                 'annual_goals_id' => $request->annual_goals_id,
                 'description' => $request->description,
                 'month' => $request->month,
@@ -62,31 +68,27 @@ class MonthlyGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Objectivo mensal Criado com Secesso',
-                'Monthly goals' => $monthlyGoal
-            ], 200);
+                'message' => 'Objectivo mensal Criado com Secesso',
+                'data' => $monthlyGoal
+            ], 201);
         } catch (Exception $e) {
             DB::rollBack();
 
-            return response()->json([
-                'Message' => "Falha ao criar objectivo anual, volte a tentar mais tarde",
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function show($id)
+    /**
+     * Mostra um objetivo mensal específico.
+     */
+
+    public function show($id): JsonResponse
     {
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
-                ->where('user_id', $user->id)
+                ->where('user_id', $userId)
                 ->with(['annualGoal.longTermVision.lifeArea:id,designation'])
                 ->first();
 
@@ -99,33 +101,34 @@ class MonthlyGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Monthly goal' => $monthlyGoal->description,
-                'Annual goal' => $monthlyGoal->annualGoal->description,
-                'Life Area' => $monthlyGoal->annualGoal->longTermVision->lifeArea->designation
+                'data' => $monthlyGoal
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Atualiza um objetivo mensal existente.
+     */
+
+    public function update(Request $request, $id): JsonResponse
     {
+
+        $request->validate([
+            'annual_goals_id' => 'nullable|exists:annual_goals,id',
+            'description' => 'nullable|string|max:255',
+            'month' => 'nullable|string|max:20',
+            'status' => 'nullable|string|max:50'
+        ]);
+
         DB::beginTransaction();
 
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
-                ->where('user_id', $user->id)
+                ->where('user_id', $userId)
                 ->first();
 
             if (!$monthlyGoal) {
@@ -152,28 +155,23 @@ class MonthlyGoalController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Falha ao atualizar objetivo mensal, tente novamente mais tarde',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function destroy($id)
+    /**
+     * Deleta um objetivo mensal.
+     */
+
+    public function destroy($id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
-                ->where('user_id', $user->id)
+                ->where('user_id', $userId)
                 ->first();
 
             if (!$monthlyGoal) {
@@ -193,17 +191,20 @@ class MonthlyGoalController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Falha ao apagar objetivo mensal, tente novamente mais tarde',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
+    }
+
+    /**
+     * Resposta de erro padronizada.
+     */
+
+    private function errorResponse(Exception $e): JsonResponse
+    {
+        return response()->json([
+            'status' => false,
+            'message' => "Erro interno, volte a tentar mais tarde.",
+            'error' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
     }
 }

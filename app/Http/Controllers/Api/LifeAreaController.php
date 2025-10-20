@@ -5,116 +5,105 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\LifeArea;
 use Exception;
-use GuzzleHttp\Psr7\Message;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 
 class LifeAreaController extends Controller
 {
 
-    public function index()
+    /**
+     * Listar todas as areas da vida padrao e do usuario autenticado
+     */
+
+    public function index(): JsonResponse
     {
 
-        $lifeAreas = LifeArea::where('id_default', true)->get();
+        try {
+            $userId = auth()->id();
 
-        return response()->json([
-            'status' => true,
-            'life_Areas' => $lifeAreas
-        ], 200);
+            $lifeAreas = LifeArea::where('is_default', true)
+                ->orWhere('user_id', $userId)
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $lifeAreas
+            ], 200);
+        } catch (Exception $e) {
+
+            return $this->errorResponse($e);
+        }
     }
 
 
-    public function getLifeAreasByUser()
-    {
-        $user = JWTAuth::parseToken()->authenticate();
-        $userId = $user->id;
+    /**
+     * Exibir uma area da vida especifica
+     */
 
-        $lifeAreas = LifeArea::where('is_default', true)->orWhere('user_id', $userId)->get();
-
-        return response()->json([
-            'status' => true,
-            'lifeAreas' => $lifeAreas
-        ], 200);
-    }
-
-    public function showLifeAreas($id)
+    public function show($id): JsonResponse
     {
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
-            $userId = $user->id;
+            $userId = auth()->id();
 
-            $lifeAreas = LifeArea::where(function ($query) use ($userId) {
+            $lifeArea = LifeArea::where(function ($query) use ($userId) {
                 $query->where('is_default', true)->orWhere('user_id', $userId);
             })->where('id', $id)->first();
 
 
-            if (!$lifeAreas) {
+            if (!$lifeArea) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Area da vida não foi encontrada'
+                    'message' => 'Area da vida não  encontrada'
                 ], 404);
             }
 
             return response()->json([
                 'status' => true,
-                'Life area' => $lifeAreas->only(['designation', 'icon_path'])
+                'data' => $lifeArea
             ], 200);
         } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Erro interno. VOlte a tentar mais tarde' . $e->getMessage()
-
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
+    // public function createAdm(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $request->validate([
+    //             'designation' => 'required|string|max:55',
+    //             'icon_path' => 'required|string'
+    //         ]);
 
-    public function createAdm(Request $request)
-    {
-        try {
-            $request->validate([
-                'designation' => 'required|string|max:55',
-                'icon_path' => 'required|string'
-            ]);
+    //         $lifeArea = LifeArea::create([
+    //             'user_id' => 0,
+    //             'designation' => $request->designation,
+    //             'icon_path' => $request->icon_path,
+    //             'is_default' => true
+    //         ]);
 
-            $lifeArea = LifeArea::create([
-                'user_id' => 0,
-                'designation' => $request->designation,
-                'icon_path' => $request->icon_path,
-                'is_default' => true
-            ]);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Área de vida criada com sucesso',
-                'life_area' => $lifeArea
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Falha ao criar área de vida, tente novamente mais tarde',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
-        }
-    }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Área de vida criada com sucesso',
+    //             'data' => $lifeArea
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Erro interno, Volte a tentar mais tarde',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
 
-    public function create(Request $request)
+    /**
+     * Criar uma nova area da vida.
+     */
+
+    public function store(Request $request): JsonResponse
     {
 
         $request->validate([
@@ -126,10 +115,10 @@ class LifeAreaController extends Controller
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = auth()->id();
 
             $lifeArea = LifeArea::create([
-                'user_id' =>  $user->id,
+                'user_id' =>  $userId,
                 'designation' => $request->designation,
                 'icon_path' => $request->icon_path,
                 'is_default' => false
@@ -139,24 +128,20 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Área de vida criada com sucesso',
-                'lifeArea' => $lifeArea
-            ], 200);
+                'message' => 'Área de vida criada com sucesso',
+                'data' => $lifeArea
+            ], 201);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao criar Area da vida, volte a tentar mais tarde" . $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function updateAreaLife(Request $request, $id)
+    /**
+     * Atualizar uma area da vida criada por Utilizador.
+     */
+
+    public function update(Request $request, $id): JsonResponse
     {
         $request->validate([
             'designation' => 'required|string|max:255',
@@ -165,23 +150,24 @@ class LifeAreaController extends Controller
 
         DB::beginTransaction();
 
-        $user = JWTAuth::parseToken()->authenticate();
-        $userId =  $user->id;
 
         try {
+
+            $userId = auth()->id();
+
             $lifeArea = LifeArea::find($id);
 
             if (!$lifeArea) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Área de vida não encontrada.'
+                    'message' => 'Área de vida não encontrada.'
                 ], 404);
             }
 
             if ($lifeArea->user_id !== $userId || $lifeArea->is_default) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Você não tem permissão para editar esta área de vida.'
+                    'message' => 'Você não tem permissão para editar esta área de vida.'
                 ], 403);
             }
 
@@ -194,38 +180,33 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Área de vida atualizada com sucesso.',
-                'lifeArea' => $lifeArea
+                'message' => 'Área de vida atualizada com sucesso.',
+                'data' => $lifeArea
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao atualizar área da vida, tente novamente mais tarde."
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function deleteLifeArea($id)
+    /**
+     * Deletar uma area da vida.
+     */
+
+    public function destroy($id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
 
-            $user = JWTAuth::parseToken()->authenticate();
-            $userId = $user->id;
+            $userId = auth()->id();
 
             $lifeArea = LifeArea::find($id);
 
             if (!$lifeArea) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Área de vida não encontrada.'
+                    'message' => 'Área de vida não encontrada.'
                 ], 404);
             }
 
@@ -233,7 +214,7 @@ class LifeAreaController extends Controller
             if ($lifeArea->user_id !== $userId || $lifeArea->is_default) {
                 return response()->json([
                     'status' => false,
-                    'Message' => 'Você não tem permissão para apagar esta área de vida.'
+                    'message' => 'Você não tem permissão para apagar esta área de vida.'
                 ], 403);
             }
 
@@ -243,19 +224,24 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'Message' => 'Área de vida deletada com sucesso.'
+                'message' => 'Área de vida deletada com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'Message' => "Falha ao deletar a área da vida. Erro: "
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
+    }
+
+    /**
+     * Resposta padronizada de erro.
+     */
+
+    private function errorResponse(Exception $e): JsonResponse
+    {
+        return response()->json([
+            'status' => false,
+            'message' => 'Erro interno, volte a tentar mais tarde.',
+            'error' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
     }
 }
