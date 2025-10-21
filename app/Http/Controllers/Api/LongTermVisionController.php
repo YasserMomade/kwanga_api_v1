@@ -110,7 +110,7 @@ class LongTermVisionController extends Controller
     }
 
     /**
-     * Atualiza uma visso a longo prazo existente.
+     * Atualiza uma visao a longo prazo existente.
      */
 
     public function update(Request $request, $id): JsonResponse
@@ -122,7 +122,6 @@ class LongTermVisionController extends Controller
             'status' => 'nullable|string|max:50',
             'deadline' => 'nullable|date'
         ]);
-
 
         DB::beginTransaction();
 
@@ -163,7 +162,7 @@ class LongTermVisionController extends Controller
     }
 
     /**
-     * Deletar uma visso a longo prazo.
+     * Deletar uma visao a longo prazo.
      */
 
     public function destroy($id): JsonResponse

@@ -57,4 +57,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(LifeArea::class);
     }
+
+    public function lists()
+    {
+        return $this->hasMany(ListModel::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
 }

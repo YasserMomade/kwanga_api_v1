@@ -11,23 +11,35 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'project_id',
+        'user_id',
+        'list_id',
         'designation',
-        'status',
-        'deadline',
-        'reminder_time',
-        'recurring'
+        'completed',
+        'has_due_date',
+        'due_date',
+        'has_reminder',
+        'reminder_datetime',
+        'has_frequency',
+        'frequency_days'
     ];
 
     protected $casts = [
-        'recurring' => 'boolean',
+        'completed' => 'boolean',
+        'has_due_date' => 'boolean',
+        'has_reminder' => 'boolean',
+        'has_frequency' => 'boolean',
+        'frequency_days' => 'array',
     ];
 
 
-
-
-    public function project()
+    public function user()
     {
-        return $this->belongsTo(project::class);
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+
+    public function list()
+    {
+        return $this->belongsTo(ListModel::class, 'list_id');
     }
 }

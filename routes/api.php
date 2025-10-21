@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\LongTermVisionController;
 use App\Http\Controllers\Api\MonthlyGoalController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\PurposeController;
+use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -109,6 +110,15 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [ListController::class, 'destroy'])->name('lists.destroy');
             Route::post('/destroy_multiple', [ListController::class, 'destroyMultiple'])->name('lists.destroyMultiple');
         });
+
+        //Tarefas
+
+        Route::prefix('tasks')->group(function () {
+
+            Route::post('/', [TaskController::class, 'store'])->name('task.store');
+            Route::get('/', [TaskController::class, 'index'])->name('task.index');
+        });
+
 
         //Projetos
 

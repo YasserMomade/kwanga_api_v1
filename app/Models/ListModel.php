@@ -14,13 +14,17 @@ class ListModel extends Model
     [
         'user_id',
         'designation',
-        'type',
-        'status'
+        'type'
     ];
 
 
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
     }
 }

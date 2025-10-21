@@ -56,7 +56,6 @@ class ListController extends Controller
                 'user_id' => $userId,
                 'designation' => $request->designation,
                 'type' => $request->type,
-                'status' => $request->type === 'action' ? 'pending' : null,
             ]);
 
             DB::commit();
