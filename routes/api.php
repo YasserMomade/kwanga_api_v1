@@ -117,8 +117,12 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [TaskController::class, 'store'])->name('task.store');
             Route::get('/', [TaskController::class, 'index'])->name('task.index');
+            Route::get('/{id}', [TaskController::class, 'show'])->name('task.show');
+            Route::put('/{id}', [TaskController::class, 'update'])->name('task.update');
+            Route::patch('/{id}/alter', [TaskController::class, 'alterStatus'])->name('task.alterStatus');
+            Route::delete('/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
+            Route::post('/delete_multiple', [TaskController::class, 'destroyMultiple'])->name('task.destroyMultiple');
         });
-
 
         //Projetos
 
