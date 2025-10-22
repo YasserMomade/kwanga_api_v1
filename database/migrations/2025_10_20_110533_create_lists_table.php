@@ -14,11 +14,10 @@ class CreateListsTable extends Migration
     public function up()
     {
         Schema::create('lists', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('designation', 255);
             $table->enum('type', ['entry', 'action']);
-            $table->enum('status', ['pending', 'in_progress', 'completed'])->nullable();
             $table->timestamps();
         });
     }

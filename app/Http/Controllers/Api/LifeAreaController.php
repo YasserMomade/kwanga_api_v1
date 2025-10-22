@@ -48,15 +48,12 @@ class LifeAreaController extends Controller
 
             $userId = auth()->id();
 
-            $lifeArea = LifeArea::where(function ($query) use ($userId) {
-                $query->where('is_default', true)->orWhere('user_id', $userId);
-            })->where('id', $id)->first();
+            $lifeArea = LifeArea::find($id);
 
-
-            if (!$lifeArea) {
+            if (!$lifeArea || ($lifeArea->user_id !== $userId && !$lifeArea->is_default)) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Area da vida não  encontrada'
+                    'message' => 'Área da vida não encontrada.'
                 ], 404);
             }
 

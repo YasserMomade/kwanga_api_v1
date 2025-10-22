@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use SebastianBergmann\CodeCoverage\Report\Xml\Project;
 
 class Task extends Model
 {
     use HasFactory;
+    use HasUuid;
 
     protected $fillable = [
         'user_id',

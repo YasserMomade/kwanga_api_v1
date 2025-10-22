@@ -14,10 +14,11 @@ class CreatePurposesTable extends Migration
     public function up()
     {
         Schema::create('purposes', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('life_area_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
-            $table->string('description', 250);
+            $table->uuid('id')->primary();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->onUpdate('cascade');
+            $table->uuid('life_area_id')->nullable();
+            $table->foreign('life_area_id')->references('id')->on('life_Areas')->onDelete('cascade')->onUpdate('cascade');
+            $table->text('description');
             $table->timestamps();
         });
     }

@@ -2,8 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\project;
-use App\Models\Task;
+
 use App\Observers\ProjectObserver;
 use App\Observers\TaskObserver;
 use Illuminate\Support\Facades\Schema;
@@ -29,7 +28,5 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191);
-        Task::observe(TaskObserver::class);
-        project::observe(ProjectObserver::class);
     }
 }

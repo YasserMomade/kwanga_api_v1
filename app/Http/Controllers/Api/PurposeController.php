@@ -76,7 +76,7 @@ class PurposeController extends Controller
     {
         $request->validate([
             'description' => 'required|string|max:250',
-            'life_area_id' => 'required|integer|exists:life_areas,id'
+            'life_area_id' => 'required|exists:life_areas,id'
         ]);
 
         DB::beginTransaction();
@@ -114,7 +114,7 @@ class PurposeController extends Controller
     {
         $request->validate([
             'description' => 'required|string|max:250',
-            'life_area_id' => 'required|integer|exists:life_areas,id'
+            'life_area_id' => 'required|exists:life_areas,id'
         ]);
 
 

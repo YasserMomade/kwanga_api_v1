@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ListModel extends Model
 {
+
+    use HasUuid;
 
     protected $table = 'lists';
 

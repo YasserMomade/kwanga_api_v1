@@ -5,14 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Project;
-
+use App\Traits\HasUuid;
 
 class MonthlyGoal extends Model
 {
 
-    // protected $casts = [
-    //     'status' => 'boolean'
-    // ];
+    use HasUuid;
 
     protected $fillable = [
 
@@ -31,20 +29,5 @@ class MonthlyGoal extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function projects()
-    {
-        return $this->hasMany(Project::class);
-    }
-
-    public function UpdateStatusFromProjects()
-    {
-
-        $total = $this->projects()->count();
-        $completed = $this->projects()->where('status', 'completed')->count();
-
-        $this->status = ($total > 0 && $total == $completed);
-        $this->save();
     }
 }

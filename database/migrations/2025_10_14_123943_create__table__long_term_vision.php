@@ -14,12 +14,13 @@ class CreateTableLongTermVision extends Migration
     public function up()
     {
         Schema::create('long_term_visions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('life_area_id')->constrained('life_Areas')->nullable()->onDelete('cascade')->onUpdate('cascade');
+            $table->uuid('id')->primary();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->onUpdate('cascade');
+            $table->uuid('life_area_id')->nullable();
+            $table->foreign('life_area_id')->references('id')->on('life_areas')->onDelete('cascade')->onUpdate('cascade');
             $table->string('description', 250);
-            $table->string('status');
-            $table->date('deadline');
+            $table->string('status')->nullable();
+            $table->year('deadline');
             $table->timestamps();
         });
     }

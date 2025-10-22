@@ -14,7 +14,7 @@ class CreateTableLifeArea extends Migration
     public function up()
     {
         Schema::create('life_areas', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->string('designation', 55);
             $table->string('icon_path');

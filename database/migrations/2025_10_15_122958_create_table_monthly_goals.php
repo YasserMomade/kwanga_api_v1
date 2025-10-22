@@ -14,11 +14,12 @@ B<?php
         public function up()
         {
             Schema::create('monthly_goals', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('annual_goals_id')->constrained('annual_goals')->nullable()->onDelete('cascade')->onUpdate('cascade');
+                $table->uuid('id')->primary();
                 $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
+                $table->uuid('annual_goals_id');
+                $table->foreign('annual_goals_id')->references('id')->on('annual_goals')->onDelete('cascade')->onUpdate('cascade');
                 $table->string('description', 250);
-                $table->string('status', 50);
+                $table->string('status', 50)->nullable();
                 $table->string('month', 12);
 
                 $table->timestamps();

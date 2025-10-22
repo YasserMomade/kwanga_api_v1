@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 class TaskController extends Controller
 {
 
-
-
     /**
      * Listar todas tarefas/concluidas ou nao concluidas /de acordo com a lista do usuario
      */

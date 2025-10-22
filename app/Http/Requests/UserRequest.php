@@ -29,6 +29,11 @@ class UserRequest extends FormRequest
         ];
     }
 
+    public function wantsJson()
+    {
+        return true;
+    }
+
 
     public function messages(): array
     {

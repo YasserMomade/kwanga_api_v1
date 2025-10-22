@@ -110,7 +110,7 @@ class AuthController extends Controller
      * Fazer login e gerar token JWT
      */
 
-    public function login(UserRequest $request): JsonResponse
+    public function login(Request $request): JsonResponse
     {
 
         $credentials = $request->only('email', 'password');
@@ -169,7 +169,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data' => $user->only(['id', 'name', 'email'])
+                'data' => $user
             ], 200);
         } catch (Exception $e) {
 
