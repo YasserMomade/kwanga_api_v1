@@ -10,6 +10,7 @@ class LongTermVision extends Model
 {
 
     use HasUuid;
+    use HasFactory;
 
     protected $fillable = [
 

@@ -2,11 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Models\LongTermVision;
+use App\Models\LifeArea;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class AnnualGoalsFactory extends Factory
+class LongTermVisionFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -16,10 +16,11 @@ class AnnualGoalsFactory extends Factory
     public function definition()
     {
         return [
+
             'description' => $this->faker->word,
             'user_id' => User::inRandomOrder()->first()->id,
-            'long_term_vision_id' => LongTermVision::inRandomOrder()->first()->id,
-            'year' => $this->faker->year
+            'life_area_id' => LifeArea::inRandomOrder()->first()->id,
+            'deadline' => $this->faker->year
         ];
     }
 }

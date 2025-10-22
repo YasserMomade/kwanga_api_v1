@@ -32,14 +32,13 @@ class TaskController extends Controller
                 $completed = filter_var($request->completed, FILTER_VALIDATE_BOOLEAN);
                 $query->where('completed', $completed);
             }
-
             // Listar tarefas de acordo com a lista
 
             if ($request->has('list_id')) {
                 $query->where('list_id', $request->list_id);
             }
 
-            $tasks = $query->orderByDesc('created_at')->get();
+            $tasks = $query->orderByDesc('created_at')->with(['list:id,designation,type'])->get();
 
             return response()->json([
                 'status' => true,
@@ -204,7 +203,7 @@ class TaskController extends Controller
 
                 $newList = ListModel::where('id', $request->list_id)->where('user_id', $userId)->firstOrFail();
 
-                $task->lisr_id = $newList->id;
+                $task->list_id = $newList->id;
 
                 $task->fill($request->only([
                     'designation',

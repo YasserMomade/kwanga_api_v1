@@ -6,7 +6,7 @@ use App\Models\LifeArea;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class LongTermVisionsFactory extends Factory
+class PurposeFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -20,7 +20,7 @@ class LongTermVisionsFactory extends Factory
             'description' => $this->faker->word,
             'user_id' => User::inRandomOrder()->first()->id,
             'life_area_id' => LifeArea::inRandomOrder()->first()->id,
-            'deadline' => $this->faker->year
+
         ];
     }
 }

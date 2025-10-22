@@ -10,6 +10,7 @@ class ListModel extends Model
 {
 
     use HasUuid;
+    use HasFactory;
 
     protected $table = 'lists';
 

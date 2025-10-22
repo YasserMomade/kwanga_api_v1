@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\MonthlyGoal;
+use App\Models\ListModel;
 use Illuminate\Database\Seeder;
 
-class MonthlyGoalSeeder extends Seeder
+class ListSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -14,6 +14,6 @@ class MonthlyGoalSeeder extends Seeder
      */
     public function run()
     {
-        MonthlyGoal::factory(20)->create();
+        ListModel::factory(30)->create();
     }
 }

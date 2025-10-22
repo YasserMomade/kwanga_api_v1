@@ -71,7 +71,7 @@ class AuthController extends Controller
         try {
 
             $request->validate([
-                'email' => 'required|email',
+                'email' => 'requ ired|email',
                 'code'  => 'required|numeric',
             ]);
 
@@ -142,9 +142,9 @@ class AuthController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Login efetuado com sucesso',
+            'token' => $token,
             'data' => [
-                'token' => $token,
-                'user'  => $user->only(['id', 'name', 'email'])
+                'user'  => $user->only(['id', 'email'])
             ]
         ], 200);
     }

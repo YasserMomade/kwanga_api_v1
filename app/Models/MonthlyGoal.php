@@ -11,6 +11,7 @@ class MonthlyGoal extends Model
 {
 
     use HasUuid;
+    use HasFactory;
 
     protected $fillable = [
 

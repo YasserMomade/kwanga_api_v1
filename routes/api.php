@@ -40,7 +40,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('users')->group(function () {
 
-            Route::get('/me', [AuthController::class, 'me'])->name("users.me");
+            Route::get('/user', [AuthController::class, 'me'])->name("users.me");
         });
 
         // Aresa da vida
