@@ -145,6 +145,12 @@ class ListController extends Controller
     }
 
 
+    /**
+     * Eliminar uma lista
+     */
+
+
+
     public function destroy($id)
     {
 
@@ -168,13 +174,18 @@ class ListController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Lista eliminada com sucesso'
+                'message' => 'Eliminado'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
             return $this->errorResponce($e);
         }
     }
+
+    /**
+     * Eliminar mais de uma lista
+     */
+
 
     public function destroyMultiple(Request $request)
     {
@@ -216,8 +227,6 @@ class ListController extends Controller
             return $this->errorResponce($e);
         }
     }
-
-
 
 
 

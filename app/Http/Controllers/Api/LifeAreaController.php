@@ -221,7 +221,7 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Área de vida deletada com sucesso.'
+                'message' => 'Eliminado.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();

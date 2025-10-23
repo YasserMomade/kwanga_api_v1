@@ -122,6 +122,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/{id}/alter', [TaskController::class, 'alterStatus'])->name('task.alterStatus');
             Route::delete('/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
             Route::post('/delete_multiple', [TaskController::class, 'destroyMultiple'])->name('task.destroyMultiple');
+            Route::patch('/{id}/move', [TaskController::class, 'moveTask'])->name('task.move');
         });
 
         //Projetos

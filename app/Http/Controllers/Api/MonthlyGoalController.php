@@ -187,7 +187,7 @@ class MonthlyGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Objetivo mensal apagado com sucesso'
+                'message' => 'Eliminado'
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();

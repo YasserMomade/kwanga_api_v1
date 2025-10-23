@@ -80,7 +80,7 @@ class AnnualGoalController extends Controller
     /**
      * Mostra um objetivo anual específico.
      */
-    public function show(int $id): JsonResponse
+    public function show($id): JsonResponse
     {
         try {
             $userId = auth()->id();

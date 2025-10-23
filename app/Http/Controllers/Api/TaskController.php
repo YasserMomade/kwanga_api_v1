@@ -14,7 +14,7 @@ class TaskController extends Controller
 {
 
     /**
-     * Listar todas tarefas/concluidas ou nao concluidas /de acordo com a lista do usuario
+     * Listar todas tarefas/concluidas ou nao concluidas de acordo com a lista do usuario
      */
 
     public function index(Request $request): JsonResponse
@@ -231,6 +231,38 @@ class TaskController extends Controller
         }
     }
 
+    public function moveTask(Request $request, $id)
+    {
+        $request->validate([
+            'list_id' => 'required|exists:lists,id',
+        ]);
+
+        try {
+            $userId = auth()->id();
+
+            $task = Task::where('id', $id)
+                ->where('user_id', $userId)
+                ->firstOrFail();
+
+            $newList = ListModel::where('id', $request->list_id)
+                ->where('user_id', $userId)
+                ->firstOrFail();
+
+            $task->list_id = $newList->id;
+            $task->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Tarefa movida com sucesso para a nova lista.',
+                'data' => $task,
+            ], 200);
+        } catch (Exception $e) {
+
+            return $this->errorResponse($e);
+        }
+    }
+
+
     /**
      * Alternar o status concluida / nao concluida.
      */
@@ -295,7 +327,7 @@ class TaskController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Tarefa eliminada com sucesso.'
+                'message' => 'Eliminado.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
@@ -310,7 +342,7 @@ class TaskController extends Controller
     {
         $request->validate([
             'task_ids' => 'required|array|min:1',
-            'task_ids.*' => 'integer|exists:tasks,id',
+            'task_ids.*' => 'string|exists:tasks,id',
         ]);
 
         DB::beginTransaction();
