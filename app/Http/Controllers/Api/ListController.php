@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListRequest;
 use App\Models\ListModel;
 use Exception;
 use Facade\FlareClient\Http\Response;
@@ -18,13 +19,20 @@ class ListController extends Controller
      * Listar todas as litas  do usuario autenticado
      */
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
 
         try {
             $user_id = auth()->id();
 
-            $lists = ListModel::where('user_id', $user_id)->get();
+            $query = ListModel::where('user_id', $user_id);
+
+            if ($request->has('type')) {
+
+                $query->where('type', $request->type);
+            }
+
+            $lists = $query->get();
 
             return response()->json([
                 'status' => true,
@@ -39,14 +47,8 @@ class ListController extends Controller
      * Criar uma nova lita
      */
 
-    public function store(Request $request): JsonResponse
+    public function store(ListRequest $request): JsonResponse
     {
-
-        $request->validate([
-            'designation' => 'required|string|max:250',
-            'type' => 'required|in:entry,action'
-        ]);
-
         $userId = auth()->id();
 
         DB::beginTransaction();
@@ -101,13 +103,8 @@ class ListController extends Controller
      */
 
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(ListRequest $request, $id): JsonResponse
     {
-
-        $request->validate([
-            'designation' => 'required|string|max:255',
-            'type' => 'required|in:entry,action'
-        ]);
 
         $userId = auth()->id();
 
@@ -135,7 +132,7 @@ class ListController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Lista atualizada com sucesso',
+                'message' => 'Atualizado com sucesso',
                 'data' => $list
             ], 200);
         } catch (Exception $e) {

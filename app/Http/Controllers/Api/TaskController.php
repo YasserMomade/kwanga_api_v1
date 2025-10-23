@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\TaskRequest;
 use App\Models\ListModel;
 use App\Models\Task;
 use Exception;
@@ -38,7 +39,17 @@ class TaskController extends Controller
                 $query->where('list_id', $request->list_id);
             }
 
-            $tasks = $query->orderByDesc('created_at')->with(['list:id,designation,type'])->get();
+            //Selecionar todas as tarefas de um tipo de lista
+
+            if ($request->has('type')) {
+                $type = $request->type;
+
+                $query->whereHas('list', function ($q) use ($type) {
+                    $q->where('type', $type);
+                });
+            }
+
+            $tasks = $query->with('list:id,designation,type')->orderByDesc('created_at')->get();
 
             return response()->json([
                 'status' => true,
@@ -83,7 +94,7 @@ class TaskController extends Controller
      * Criar tarafas
      */
 
-    public function store(Request $request)
+    public function store(TaskRequest $request)
     {
 
         $request->validate([
@@ -221,7 +232,7 @@ class TaskController extends Controller
 
                 return response()->json([
                     'status' => true,
-                    'message' => "Tarefa atualizada com sucesso",
+                    'message' => "Atualizado com sucesso",
                     'data' => $task,
                 ], 200);
             }
