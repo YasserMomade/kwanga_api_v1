@@ -13,7 +13,7 @@ class Purpose extends Model
     use HasFactory;
 
     protected $fillable = [
-
+        'id',
         'description',
         'life_area_id',
         'user_id',

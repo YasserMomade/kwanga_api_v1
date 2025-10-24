@@ -75,6 +75,7 @@ class PurposeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'id' => 'required|string',
             'description' => 'required|string|max:250',
             'life_area_id' => 'required|exists:life_areas,id'
         ]);
@@ -85,12 +86,15 @@ class PurposeController extends Controller
 
             $userId = auth()->id();
 
-            $purpose = Purpose::create([
-                'user_id' =>  $userId,
-                'life_area_id' => $request->life_area_id,
-                'description' => $request->description,
+            $purpose = Purpose::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'user_id' =>  $userId,
+                    'life_area_id' => $request->life_area_id,
+                    'description' => $request->description,
 
-            ]);
+                ]
+            );
 
             DB::commit();
 

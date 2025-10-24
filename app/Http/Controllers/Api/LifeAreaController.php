@@ -114,12 +114,15 @@ class LifeAreaController extends Controller
 
             $userId = auth()->id();
 
-            $lifeArea = LifeArea::create([
-                'user_id' =>  $userId,
-                'designation' => $request->designation,
-                'icon_path' => $request->icon_path,
-                'is_default' => false
-            ]);
+            $lifeArea = LifeArea::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'user_id' =>  $userId,
+                    'designation' => $request->designation,
+                    'icon_path' => $request->icon_path,
+                    'is_default' => false
+                ]
+            );
 
             DB::commit();
 

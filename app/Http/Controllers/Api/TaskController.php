@@ -97,18 +97,6 @@ class TaskController extends Controller
     public function store(TaskRequest $request)
     {
 
-        $request->validate([
-            'list_id' => 'required|exists:lists,id',
-            'designation' => 'required|string|max:255',
-            'completed' => 'boolean',
-            'has_due_date' => 'boolean',
-            'due_date' => 'nullable|date',
-            'has_reminder' => 'boolean',
-            'reminder_datetime' => 'nullable|date',
-            'has_frequency' => 'boolean',
-            'frequency_days' => 'nullable|array',
-        ]);
-
 
         DB::beginTransaction();
 
@@ -134,6 +122,7 @@ class TaskController extends Controller
             if ($list->type === 'entry') {
                 // Para listas de entrada so a designacao e obrigatoria
                 $taskData = [
+                    ['id' => $request->id],
                     'user_id' => $userId,
                     'list_id' => $list->id,
                     'designation' => $request->designation,
@@ -150,21 +139,23 @@ class TaskController extends Controller
                     return response()->json(['status' => false, 'message' => 'Os dias de frequência são obrigatórios.'], 422);
                 }
 
-                $taskData = [
-                    'user_id' => $userId,
-                    'list_id' => $list->id,
-                    'designation' => $request->designation,
-                    'completed' => $request->completed ?? false,
-                    'has_due_date' => $request->has_due_date ?? false,
-                    'due_date' => $request->due_date,
-                    'has_reminder' => $request->has_reminder ?? false,
-                    'reminder_datetime' => $request->reminder_datetime,
-                    'has_frequency' => $request->has_frequency ?? false,
-                    'frequency_days' => $request->frequency_days,
-                ];
+                $taskData =
+                    [
+                        ['id' => $request->id],
+                        'user_id' => $userId,
+                        'list_id' => $list->id,
+                        'designation' => $request->designation,
+                        'completed' => $request->completed ?? false,
+                        'has_due_date' => $request->has_due_date ?? false,
+                        'due_date' => $request->due_date,
+                        'has_reminder' => $request->has_reminder ?? false,
+                        'reminder_datetime' => $request->reminder_datetime,
+                        'has_frequency' => $request->has_frequency ?? false,
+                        'frequency_days' => $request->frequency_days,
+                    ];
             }
 
-            $task = Task::create($taskData);
+            $task = Task::updateOrCreate($taskData);
 
             DB::commit();
 

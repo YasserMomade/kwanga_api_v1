@@ -54,11 +54,14 @@ class ListController extends Controller
         DB::beginTransaction();
         try {
 
-            $list = ListModel::create([
-                'user_id' => $userId,
-                'designation' => $request->designation,
-                'type' => $request->type,
-            ]);
+            $list = ListModel::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'user_id' => $userId,
+                    'designation' => $request->designation,
+                    'type' => $request->type,
+                ]
+            );
 
             DB::commit();
 

@@ -16,6 +16,7 @@ class ListModel extends Model
 
     protected $fillable =
     [
+        'id',
         'user_id',
         'designation',
         'type'
