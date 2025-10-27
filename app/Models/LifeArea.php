@@ -14,10 +14,14 @@ class LifeArea extends Model
 
     protected $fillable = [
 
+        'id',
         'designation',
         'icon_path',
         'user_id',
-        'is_default'
+        'is_default',
+        'created_at',
+        'updated_at',
+
     ];
 
     public function user()

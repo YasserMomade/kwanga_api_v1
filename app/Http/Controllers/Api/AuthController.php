@@ -92,9 +92,15 @@ class AuthController extends Controller
                 'verification_code' => null
             ]);
 
+            $token = JWTAuth::fromUser($user);
+
             return response()->json([
                 'status' => true,
-                'message' => 'E-mail verificado com sucesso!'
+                'message' => 'E-mail verificado com sucesso!',
+                'token' => $token,
+                'data' => [
+                    'user' => $user->only(['id', 'email'])
+                ]
             ], 200);
         } catch (Exception $e) {
 
