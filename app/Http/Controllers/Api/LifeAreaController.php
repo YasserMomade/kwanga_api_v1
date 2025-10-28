@@ -13,15 +13,41 @@ use Illuminate\Support\Facades\DB;
 class LifeAreaController extends Controller
 {
 
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
     /**
      * Listar todas as areas da vida padrao e do usuario autenticado
      */
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
 
         try {
-            $userId = auth()->id();
+
+            $userId = $this->getUserId($request);
 
             $lifeAreas = LifeArea::where('is_default', true)
                 ->orWhere('user_id', $userId)
@@ -42,15 +68,26 @@ class LifeAreaController extends Controller
      * Exibir uma area da vida especifica
      */
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
+            $userId = $this->getUserId($request);
 
-            $userId = auth()->id();
+            $userId = (string) $userId;
 
             $lifeArea = LifeArea::find($id);
 
-            if (!$lifeArea || ($lifeArea->user_id !== $userId && !$lifeArea->is_default)) {
+            if (!$lifeArea) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Área da vida não encontrada.'
+                ], 404);
+            }
+
+
+            $ownerId = (string) $lifeArea->user_id;
+
+            if ($ownerId !== $userId && !$lifeArea->is_default) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Área da vida não encontrada.'
@@ -65,6 +102,7 @@ class LifeAreaController extends Controller
             return $this->errorResponse($e);
         }
     }
+
 
     // public function createAdm(Request $request): JsonResponse
     // {
@@ -103,6 +141,8 @@ class LifeAreaController extends Controller
     public function store(Request $request): JsonResponse
     {
 
+
+
         $request->validate([
             'designation' => 'required|string|max:55',
             'icon_path' => 'required|string'
@@ -112,12 +152,12 @@ class LifeAreaController extends Controller
 
         try {
 
-            //  $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $lifeArea = LifeArea::updateOrCreate(
                 ['id' => $request->id],
                 [
-                    'user_id' =>  $request->user_id,
+                    'user_id' =>  $userId,
                     'designation' => $request->designation,
                     'icon_path' => $request->icon_path,
                     'is_default' => false
@@ -153,7 +193,7 @@ class LifeAreaController extends Controller
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $lifeArea = LifeArea::find($id);
 
@@ -193,13 +233,13 @@ class LifeAreaController extends Controller
      * Deletar uma area da vida.
      */
 
-    public function destroy($id): JsonResponse
+    public function destroy($request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $lifeArea = LifeArea::find($id);
 
