@@ -14,6 +14,36 @@ use Illuminate\Support\Facades\DB;
 class TaskController extends Controller
 {
 
+
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
+
+
+
     /**
      * Listar todas tarefas/concluidas ou nao concluidas de acordo com a lista do usuario
      */
@@ -21,9 +51,11 @@ class TaskController extends Controller
     public function index(Request $request): JsonResponse
     {
 
-        $userId = auth()->id();
+
 
         try {
+
+            $userId = $this->getUserId($request);
 
             $query = Task::where('user_id', $userId);
 
@@ -63,10 +95,10 @@ class TaskController extends Controller
     /**
      * Mostrar uma tarefa específica.
      */
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $task = Task::where('id', $id)
                 ->where('user_id', $userId)
@@ -100,9 +132,9 @@ class TaskController extends Controller
 
         DB::beginTransaction();
 
-        $userId = auth()->id();
-
         try {
+
+            $userId = $this->getUserId($request);
 
             $list = ListModel::where('id', $request->list_id)
                 ->where('user_id', $userId)
@@ -193,7 +225,7 @@ class TaskController extends Controller
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $task = Task::where('id', $id)->where('user_id', $userId)->firstOrFail();
 
@@ -240,7 +272,7 @@ class TaskController extends Controller
         ]);
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $task = Task::where('id', $id)
                 ->where('user_id', $userId)
@@ -268,12 +300,12 @@ class TaskController extends Controller
     /**
      * Alternar o status concluida / nao concluida.
      */
-    public function alterStatus($id): JsonResponse
+    public function alterStatus(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $task = Task::where('id', $id)
                 ->where('user_id', $userId)
@@ -305,12 +337,12 @@ class TaskController extends Controller
     /**
      * Eliminar uma unica tarefa.
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $task = Task::where('id', $id)
                 ->where('user_id', $userId)
@@ -350,7 +382,7 @@ class TaskController extends Controller
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $deleted = Task::whereIn('id', $request->task_ids)
                 ->where('user_id', $userId)

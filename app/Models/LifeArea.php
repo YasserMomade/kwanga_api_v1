@@ -11,7 +11,6 @@ class LifeArea extends Model
     use HasFactory;
     use HasUuid;
 
-
     protected $fillable = [
 
         'id',

@@ -17,7 +17,7 @@ class CreatePurposesTable extends Migration
             $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->onUpdate('cascade');
             $table->uuid('life_area_id')->nullable();
-            $table->foreign('life_area_id')->references('id')->on('life_Areas')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('life_area_id')->references('id')->on('life_areas')->onDelete('cascade')->onUpdate('cascade');
             $table->text('description');
             $table->timestamps();
         });

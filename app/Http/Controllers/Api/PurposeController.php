@@ -13,16 +13,41 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class PurposeController extends Controller
 {
 
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
 
     /**
      * Listar todos os propositos do usuario autenticado.
      */
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $purposes = Purpose::where('user_id', $userId)
                 ->with(['lifeArea:id,designation'])->get();
@@ -40,11 +65,11 @@ class PurposeController extends Controller
      * Exibir um proposito especifico.
      */
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $purpose = Purpose::where('id', $id)->where('user_id', $userId)
                 ->with(['lifeArea:id,designation'])->first();
@@ -84,7 +109,7 @@ class PurposeController extends Controller
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $purpose = Purpose::updateOrCreate(
                 ['id' => $request->id],
@@ -121,12 +146,13 @@ class PurposeController extends Controller
             'life_area_id' => 'required|exists:life_areas,id'
         ]);
 
+        DB::beginTransaction();
 
         try {
 
-            DB::beginTransaction();
 
-            $userId = auth()->id();
+
+            $userId = $this->getUserId($request);
 
             $purpose = Purpose::where('id', $id)->where('user_id', $userId)->first();
 
@@ -160,13 +186,13 @@ class PurposeController extends Controller
      * Deletar um propósito.
      */
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
 
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $purpose = Purpose::where('id', $id)->where('user_id', $userId)->first();
 

@@ -15,6 +15,31 @@ use Illuminate\Support\Facades\DB;
 class ListController extends Controller
 {
 
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
     /**
      * Listar todas as litas  do usuario autenticado
      */
@@ -23,9 +48,9 @@ class ListController extends Controller
     {
 
         try {
-            $user_id = auth()->id();
+            $userId = $this->getUserId($request);
 
-            $query = ListModel::where('user_id', $user_id);
+            $query = ListModel::where('user_id', $userId);
 
             if ($request->has('type')) {
 
@@ -49,10 +74,11 @@ class ListController extends Controller
 
     public function store(ListRequest $request): JsonResponse
     {
-        $userId = auth()->id();
 
         DB::beginTransaction();
         try {
+
+            $userId = $this->getUserId($request);
 
             $list = ListModel::updateOrCreate(
                 ['id' => $request->id],
@@ -76,12 +102,14 @@ class ListController extends Controller
         }
     }
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
 
-        $userId = auth()->id();
 
         try {
+
+            $userId = $this->getUserId($request);
+
             $list = ListModel::where('id', $id)->where('user_id', $userId)->first();
 
 
@@ -109,12 +137,12 @@ class ListController extends Controller
     public function update(ListRequest $request, $id): JsonResponse
     {
 
-        $userId = auth()->id();
-
         DB::beginTransaction();
 
 
         try {
+
+            $userId = $this->getUserId($request);
 
             $list = ListModel::where('user_id', $userId)->findOrFail($id);
 
@@ -151,14 +179,14 @@ class ListController extends Controller
 
 
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
 
         DB::beginTransaction();
 
-        $userId = auth()->id();
-
         try {
+
+            $userId = $this->getUserId($request);
 
             $list = ListModel::where('id', $id)->where('user_id', $userId)->first();
 
@@ -192,9 +220,9 @@ class ListController extends Controller
 
         DB::beginTransaction();
 
-        $userId = auth()->id();
-
         try {
+
+            $userId = $this->getUserId($request);
 
             $request->validate([
                 'ids' => 'required|array',
