@@ -51,8 +51,6 @@ class TaskController extends Controller
     public function index(Request $request): JsonResponse
     {
 
-
-
         try {
 
             $userId = $this->getUserId($request);
@@ -129,7 +127,6 @@ class TaskController extends Controller
     public function store(TaskRequest $request)
     {
 
-
         DB::beginTransaction();
 
         try {
@@ -170,10 +167,11 @@ class TaskController extends Controller
                 if ($request->has_frequency && !$request->frequency_days) {
                     return response()->json(['status' => false, 'message' => 'Os dias de frequência são obrigatórios.'], 422);
                 }
-
-                $taskData =
+                $task = Task::updateOrCreate(
                     [
-                        ['id' => $request->id],
+                        'id' => $request->id,
+                    ],
+                    [
                         'user_id' => $userId,
                         'list_id' => $list->id,
                         'designation' => $request->designation,
@@ -184,10 +182,9 @@ class TaskController extends Controller
                         'reminder_datetime' => $request->reminder_datetime,
                         'has_frequency' => $request->has_frequency ?? false,
                         'frequency_days' => $request->frequency_days,
-                    ];
+                    ]
+                );
             }
-
-            $task = Task::updateOrCreate($taskData);
 
             DB::commit();
 
