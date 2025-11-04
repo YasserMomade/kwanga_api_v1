@@ -150,13 +150,17 @@ class TaskController extends Controller
 
             if ($list->type === 'entry') {
                 // Para listas de entrada so a designacao e obrigatoria
-                $taskData = [
-                    ['id' => $request->id],
-                    'user_id' => $userId,
-                    'list_id' => $list->id,
-                    'designation' => $request->designation,
-                    'completed' => false,
-                ];
+                $task = Task::updateOrCreate(
+                    [
+                        'id' => $request->id,
+                    ],
+                    [
+                        'user_id' => $userId,
+                        'list_id' => $list->id,
+                        'designation' => $request->designation,
+                        'completed' => false,
+                    ]
+                );
             } else {
                 if ($request->has_due_date && !$request->due_date) {
                     return response()->json(['status' => false, 'message' => 'A data de conclusão é obrigatória.'], 422);
