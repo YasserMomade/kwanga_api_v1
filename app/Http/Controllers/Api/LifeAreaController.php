@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LifeAreaRequest;
 use App\Models\LifeArea;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -138,7 +139,7 @@ class LifeAreaController extends Controller
      * Criar uma nova area da vida.
      */
 
-    public function store(Request $request): JsonResponse
+    public function store(LifeAreaRequest $request): JsonResponse
     {
 
 
