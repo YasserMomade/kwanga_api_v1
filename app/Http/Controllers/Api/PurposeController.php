@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PurposeRequest;
 use App\Models\Purpose;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -139,12 +140,8 @@ class PurposeController extends Controller
      * Atualizar um  proposito.
      */
 
-    public function update(Request $request, $id)
+    public function update(PurposeRequest $request, $id)
     {
-        $request->validate([
-            'description' => 'required|string|max:250',
-            'life_area_id' => 'required|exists:life_areas,id'
-        ]);
 
         DB::beginTransaction();
 

@@ -56,7 +56,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => "Erro interno, volte a tentar mais tarde",
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -132,7 +132,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Erro ao criar o token',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
 
@@ -182,7 +182,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Ero interno, tente novamente mais tarde.',
-                'error' =>  $e->getMessage()
+                'error' =>  config('app.debug') ? $e->getMessage() : null
             ]);
         }
     }
@@ -206,7 +206,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Erro ao efectuar logout.',
-                'error' =>  $e->getMessage()
+                'error' =>  config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
