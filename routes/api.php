@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LifeAreaController;
 use App\Http\Controllers\Api\ListController;
 use App\Http\Controllers\Api\LongTermVisionController;
+use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\MonthlyGoalController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\PurposeController;
@@ -27,6 +28,23 @@ Route::prefix('v1')->group(function () {
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('auth.Login');
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.Logout');
     });
+
+
+
+    /**
+     * Metricas do sistema
+     */
+
+    Route::prefix('metrics')->group(function () {
+
+        Route::get('/users', [MetricsController::class, 'totalUsers'])->name("metrics.totalUsers");
+        Route::get('/users/verification', [MetricsController::class, 'userVerificationStatus'])->name("metrics.userVerificationStatus");
+        Route::get('/items', [MetricsController::class, 'totalItems'])->name("metrics.totalItems");
+        Route::get('/items/daily', [MetricsController::class, 'itemsByDay']);
+        Route::get('/engagement/daily', [MetricsController::class, 'engagementByDay']);
+        Route::get('/export', [MetricsController::class, 'exportBasic']);
+    });
+
 
     /**
      * ROtas protegida porautenticacao
