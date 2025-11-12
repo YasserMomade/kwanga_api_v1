@@ -25,6 +25,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/register', [AuthController::class, 'register'])->name("auth.register");
         Route::post('/verify_email', [AuthController::class, 'verifyEmail'])->name('auth.verifyEmail');
+        Route::post('/resend_code', [AuthController::class, 'resendVerificationCode']);
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('auth.Login');
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.Logout');
     });

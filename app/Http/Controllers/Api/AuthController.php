@@ -62,6 +62,67 @@ class AuthController extends Controller
     }
 
     /**
+     * Reenviar codigo de verificacao de Email
+     */
+    public function resendVerificationCode(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email'
+            ]);
+
+
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'E-mail não encontrado.'
+                ], 404);
+            }
+
+
+            if ($user->email_verified_at) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Este e-mail já foi verificado.'
+                ], 400);
+            }
+
+            if ($user->updated_at->diffInSeconds(now()) < 120) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Aguarde um pouco antes de reenviar outro código.'
+                ], 429);
+            }
+
+
+
+            $newCode = random_int(100000, 999999);
+
+
+            $user->update([
+                'verification_code' => $newCode
+            ]);
+
+            // Reenviar e-mail
+            Mail::to($user->email)->send(new VerifyEmail($user));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Novo código de verificação enviado para o seu e-mail.'
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro ao reenviar o código. Tente novamente mais tarde.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+    /**
      * Verificar codigo de e-mail
      */
 
