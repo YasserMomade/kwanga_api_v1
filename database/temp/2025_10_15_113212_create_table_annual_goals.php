@@ -18,8 +18,7 @@ class CreateTableAnnualGoals extends Migration
             $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->uuid('long_term_vision_id');
             $table->foreign('long_term_vision_id')->references('id')->on('long_term_visions')->onDelete('cascade')->onUpdate('cascade');
-            $table->string('description', 250);
-            $table->string('status', 50)->nullable();
+            $table->string('description');
             $table->year('year');
             $table->timestamps();
         });

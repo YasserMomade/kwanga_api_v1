@@ -15,11 +15,13 @@ class MonthlyGoal extends Model
 
     protected $fillable = [
 
+        'id',
         'description',
         'annual_goals_id',
         'user_id',
         'month',
-        'status'
+        'created_at',
+        'updated_at',
     ];
 
     public function annualGoal()

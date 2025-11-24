@@ -19,7 +19,6 @@ class CreateTableLongTermVision extends Migration
             $table->uuid('life_area_id')->nullable();
             $table->foreign('life_area_id')->references('id')->on('life_areas')->onDelete('cascade')->onUpdate('cascade');
             $table->string('description', 250);
-            $table->string('status')->nullable();
             $table->year('deadline');
             $table->timestamps();
         });
@@ -32,6 +31,6 @@ class CreateTableLongTermVision extends Migration
      */
     public function down()
     {
-        // Schema::dropIfExists('_table__long_term_vision');
+        Schema::dropIfExists('_table__long_term_visions');
     }
 }

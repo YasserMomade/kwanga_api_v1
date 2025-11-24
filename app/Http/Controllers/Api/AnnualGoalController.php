@@ -13,16 +13,43 @@ use Illuminate\Support\Facades\DB;
 class AnnualGoalController extends Controller
 {
 
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
     /**
      * Lista todos os objetivos anuais do utilizador autenticado.
      */
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
 
-        $userId = auth()->id();
 
         try {
+
+            $userId = $this->getUserId($request);
 
             $annualGoals = AnnualGoal::where('user_id', $userId)
                 ->with(['longTermVision:id,description'])->get();
@@ -45,24 +72,27 @@ class AnnualGoalController extends Controller
 
         $request->validate([
             'long_term_vision_id' => 'required|exists:long_term_visions,id',
-            'description' => 'required|string|max:255',
+            'description' => 'required|string',
             'year' => 'required|integer',
-            'status' => 'nullable|string|max:50'
         ]);
 
         DB::beginTransaction();
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
-            $annualGoal = AnnualGoal::create([
-                'user_id' =>  $userId,
-                'long_term_vision_id' => $request->long_term_vision_id,
-                'description' => $request->description,
-                'year' => $request->year,
-                'status' => $request->status,
-            ]);
+            $annualGoal = AnnualGoal::create(
+                ['id' => $request->id],
+                [
+                    'user_id' =>  $userId,
+                    'long_term_vision_id' => $request->long_term_vision_id,
+                    'description' => $request->description,
+                    'year' => $request->year,
+                    'created_at' => $request->created_at ?? now(),
+                    'updated_at' => $request->updated_at ?? now()
+                ]
+            );
 
             DB::commit();
 
@@ -80,10 +110,10 @@ class AnnualGoalController extends Controller
     /**
      * Mostra um objetivo anual específico.
      */
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $annualGoal = AnnualGoal::where('id', $id)
                 ->where('user_id', $userId)
@@ -113,11 +143,12 @@ class AnnualGoalController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        $userId = auth()->id();
 
         DB::beginTransaction();
 
         try {
+
+            $userId = $this->getUserId($request);
 
             $annualGoal = AnnualGoal::where('id', $id)->where('user_id', $userId)->first();
 
@@ -128,13 +159,15 @@ class AnnualGoalController extends Controller
                 ], 404);
             }
 
-            $annualGoal->update([
-                'user_id' =>  $userId,
-                'long_term_vision_id' => $request->long_term_vision_id,
-                'description' => $request->description,
-                'status' => $request->status,
-                'year' => $request->year
+            $data = $request->only([
+                'long_term_vision_id',
+                'description',
+                'year'
             ]);
+
+            $data['updated_at'] = $request->updated_at ?? now();
+
+            $annualGoal->update($data);
 
 
             DB::commit();
@@ -154,13 +187,14 @@ class AnnualGoalController extends Controller
      * Deleta um objetivo anual.
      */
 
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
-        $userId = auth()->id();
 
         try {
+
+            $userId = $this->getUserId($request);
 
             $annualGoal = AnnualGoal::where('id', $id)
                 ->where('user_id', $userId)

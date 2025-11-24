@@ -13,12 +13,13 @@ class LongTermVision extends Model
     use HasFactory;
 
     protected $fillable = [
-
+        'id',
         'user_id',
         'life_area_id',
         'description',
         'deadline',
-        'status'
+        'created_at',
+        'updated_at',
     ];
 
     public function user()

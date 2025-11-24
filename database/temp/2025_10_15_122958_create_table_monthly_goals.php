@@ -18,10 +18,8 @@ B<?php
                 $table->foreignId('user_id')->constrained('users')->nullable()->onDelete('cascade')->onUpdate('cascade');
                 $table->uuid('annual_goals_id');
                 $table->foreign('annual_goals_id')->references('id')->on('annual_goals')->onDelete('cascade')->onUpdate('cascade');
-                $table->string('description', 250);
-                $table->string('status', 50)->nullable();
+                $table->string('description');
                 $table->string('month', 12);
-
                 $table->timestamps();
             });
         }

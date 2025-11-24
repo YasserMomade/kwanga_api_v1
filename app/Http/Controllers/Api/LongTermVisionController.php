@@ -16,12 +16,40 @@ class LongTermVisionController extends Controller
      * Listar todas as visoes a longo prazo do utilizador autenticado.
      */
 
-    public function index(): JsonResponse
+
+
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
+    public function index(Request $request): JsonResponse
     {
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
 
             $longTermVision = LongTermVision::where('user_id', $userId)
@@ -45,9 +73,8 @@ class LongTermVisionController extends Controller
 
         $request->validate([
             'life_area_id' => 'required|exists:life_areas,id',
-            'description' => 'required|string|max:255',
-            'status' => 'nullable|string|max:50',
-            'deadline' => 'nullable|date'
+            'description' => 'required|string',
+            'deadline' => 'nullable'
         ]);
 
 
@@ -55,15 +82,20 @@ class LongTermVisionController extends Controller
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
-            $longTermVision = LongTermVision::create([
-                'user_id' =>  $userId,
-                'life_area_id' => $request->life_area_id,
-                'description' => $request->description,
-                'status' => $request->status,
-                'deadline' => $request->deadline
-            ]);
+            $longTermVision = LongTermVision::create(
+                ['id' => $request->id],
+                [
+                    'user_id' =>  $userId,
+                    'life_area_id' => $request->life_area_id,
+                    'description' => $request->description,
+                    'deadline' => $request->deadline,
+                    'created_at' => $request->created_at ?? now(),
+                    'updated_at' => $request->updated_at ?? now()
+                ]
+            );
+
 
             DB::commit();
 
@@ -82,12 +114,12 @@ class LongTermVisionController extends Controller
      * Mostra uma visso a longo prazo específica.
      */
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $longTermVision = LongTermVision::where('id', $id)->where('user_id', $userId)
                 ->with(['lifeArea:id,designation'])->first();
@@ -117,17 +149,16 @@ class LongTermVisionController extends Controller
 
     {
         $request->validate([
-            'life_area_id' => 'required|exists:life_areas,id',
-            'description' => 'required|string|max:255',
-            'status' => 'nullable|string|max:50',
-            'deadline' => 'nullable|date'
+            'life_area_id' => 'sometimes|exists:life_areas,id',
+            'description' => 'sometimes|string',
+            'deadline' => 'nullable'
         ]);
 
         DB::beginTransaction();
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $longTermVision = LongTermVision::where('id', $id)->where('user_id', $userId)->first();
 
@@ -138,12 +169,15 @@ class LongTermVisionController extends Controller
                 ], 404);
             }
 
-            $longTermVision->update([
-                'life_area_id' => $request->life_area_id,
-                'description' => $request->description,
-                'status' => $request->status,
-                'deadline' => $request->deadline
+            $data = $request->only([
+                'life_area_id',
+                'description',
+                'deadline'
             ]);
+
+            $data['updated_at'] = $request->updated_at ?? now();
+
+            $longTermVision->update($data);
 
 
             DB::commit();
@@ -165,13 +199,13 @@ class LongTermVisionController extends Controller
      * Deletar uma visao a longo prazo.
      */
 
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $longTermVision = LongTermVision::where('id', $id)
                 ->where('user_id', $userId)

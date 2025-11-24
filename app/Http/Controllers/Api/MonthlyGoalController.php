@@ -13,15 +13,43 @@ use Illuminate\Support\Facades\DB;
 class MonthlyGoalController extends Controller
 {
 
+
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
     /**
      * Lista todos os objetivos mensais do utilizador autenticado.
      */
 
-    public function index(): JsonResponse
+
+    public function index(Request $request): JsonResponse
     {
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $monthlyGoal = MonthlyGoal::where('user_id', $userId)
                 ->with(['annualGoal:id,description'])->get();
@@ -44,9 +72,8 @@ class MonthlyGoalController extends Controller
 
         $request->validate([
             'annual_goals_id' => 'required|exists:annual_goals,id',
-            'description' => 'required|string|max:255',
+            'description' => 'required|string',
             'month' => 'required|string|max:20',
-            'status' => 'nullable|string|max:50'
         ]);
 
 
@@ -54,15 +81,19 @@ class MonthlyGoalController extends Controller
 
         try {
 
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
-            $monthlyGoal = MonthlyGoal::create([
-                'user_id' =>  $userId,
-                'annual_goals_id' => $request->annual_goals_id,
-                'description' => $request->description,
-                'month' => $request->month,
-                'status' => $request->status,
-            ]);
+            $monthlyGoal = MonthlyGoal::create(
+                ['id' => $request->id],
+                [
+                    'user_id' =>  $userId,
+                    'annual_goals_id' => $request->annual_goals_id,
+                    'description' => $request->description,
+                    'month' => $request->month,
+                    'created_at' => $request->created_at ?? now(),
+                    'updated_at' => $request->updated_at ?? now()
+                ]
+            );
 
             DB::commit();
 
@@ -82,10 +113,10 @@ class MonthlyGoalController extends Controller
      * Mostra um objetivo mensal específico.
      */
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
                 ->where('user_id', $userId)
@@ -116,16 +147,15 @@ class MonthlyGoalController extends Controller
     {
 
         $request->validate([
-            'annual_goals_id' => 'nullable|exists:annual_goals,id',
-            'description' => 'nullable|string|max:255',
+            'annual_goals_id' => 'sometimes|exists:annual_goals,id',
+            'description' => 'sometimes|string',
             'month' => 'nullable|string|max:20',
-            'status' => 'nullable|string|max:50'
         ]);
 
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
                 ->where('user_id', $userId)
@@ -138,12 +168,17 @@ class MonthlyGoalController extends Controller
                 ], 404);
             }
 
-            $monthlyGoal->update([
-                'annual_goals_id' => $request->annual_goals_id ?? $monthlyGoal->annual_goals_id,
-                'description' => $request->description ?? $monthlyGoal->description,
-                'month' => $request->month ?? $monthlyGoal->month,
-                'status' => $request->status ?? $monthlyGoal->status,
+            $data = $request->only([
+                'annual_goals_id',
+                'description',
+                'month'
             ]);
+
+            $data['updated_at'] = $request->updated_at ?? now();
+
+            $monthlyGoal->update($data);
+
+
 
             DB::commit();
 
@@ -163,12 +198,12 @@ class MonthlyGoalController extends Controller
      * Deleta um objetivo mensal.
      */
 
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $userId = auth()->id();
+            $userId = $this->getUserId($request);
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
                 ->where('user_id', $userId)

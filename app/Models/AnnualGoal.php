@@ -11,13 +11,15 @@ class AnnualGoal extends Model
     use HasFactory;
     use HasUuid;
 
-    protected $fillable = [
-
+    protected $fillable =
+    [
+        'id',
         'description',
         'long_term_vision_id',
         'user_id',
         'year',
-        'status'
+        'created_at',
+        'updated_at',
     ];
 
     public function longTermVision()
