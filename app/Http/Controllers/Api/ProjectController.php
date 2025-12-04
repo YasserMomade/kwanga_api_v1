@@ -7,151 +7,207 @@ use App\Models\project;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ProjectController extends Controller
 {
 
-    public function index()
+
+    public function getUserId(Request $request)
     {
 
-        try {
+        if (auth()->check()) {
 
-            $user = JWTAuth::parseToken()->authenticate();
+            $authId = auth()->id();
 
-            if (!$user) {
-                return response()->json([
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+
+                abort(Response()->json([
                     'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
             }
 
-            $project = project::where('user_id', $user->id)
-                ->with(['MonthlyGoals:id,month,description'])->get();
-
-            return response()->json([
-                'status' => true,
-                'Projects' => $project
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $authId;
         }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
     }
 
-    public function create(Request $request)
+
+    /**
+     * Listar todos os projetos do utilizador autenticado.
+     */
+    public function index(Request $request): JsonResponse
     {
-
-        DB::beginTransaction();
-
         try {
+            $userId = $this->getUserId($request);
 
-            $user = JWTAuth::parseToken()->authenticate();
-
-            $project = project::create([
-                'user_id' =>  $user->id,
-                'monthly_goals_id' => $request->monthly_goals_id,
-                'designation' => $request->designation,
-                'purpose' => $request->purpose,
-                'expected_result' => $request->expected_result,
-                'priority' => $request->priority,
-                'first_step' => $request->first_step
-
-            ]);
-
-            DB::commit();
+            $projects = Project::where('user_id', $userId)
+                ->with(['actions' => function ($q) {
+                    $q->orderBy('order_index');
+                }])
+                ->get();
 
             return response()->json([
                 'status' => true,
-                'massage' => 'Projeto Criado com Secesso',
-                'Project' => $project
+                'data'   => $projects
             ], 200);
         } catch (Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'Message' => "Falha ao criar Projeto, volte a tentar mais tarde",
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'TOken expirado ou invalido! Faca login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function update(Request $request, $id)
+    public function show(Request $request, string $id): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = $this->getUserId($request);
 
-
-            $project = project::where('id', $id)
-                ->where('user_id', $user->id)
+            $project = Project::where('id', $id)
+                ->where('user_id', $userId)
+                ->with(['actions' => function ($q) {
+                    $q->orderBy('order_index');
+                }])
                 ->first();
 
-            if (!$project) {
+            if (! $project) {
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Projeto não encontrado'
+                    'status'  => false,
+                    'message' => 'Projeto não encontrado.'
                 ], 404);
             }
 
+            return response()->json([
+                'status' => true,
+                'data'   => $project
+            ], 200);
+        } catch (Exception $e) {
+            return $this->errorResponse($e);
+        }
+    }
 
-            $project->update([
-                'monthly_goals_id' => $request->monthly_goals_id ?? $project->monthly_goals_id,
-                'designation' => $request->designation ?? $project->designation,
-                'purpose' => $request->purpose ?? $project->purpose,
-                'expected_result' => $request->expected_result ?? $project->expected_result,
-                'priority' => $request->priority ?? $project->priority,
-                'first_step' => $request->first_step ?? $project->first_step
-            ]);
+    public function store(Request $request): JsonResponse
+    {
+        $request->validate([
+            'id'               => 'required|string',
+            'monthly_goal_id'  => 'required|exists:monthly_goals,id',
+            'title'            => 'required|string|max:255',
+            'purpose'          => 'required|string',
+            'expected_result'  => 'required|string',
+            'brainstorm_ideas' => 'nullable|array',
+            'brainstorm_ideas.*' => 'string',
+            'first_action'     => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+
+            $project = Project::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'user_id'          => $userId,
+                    'monthly_goal_id'  => $request->monthly_goal_id,
+                    'title'            => $request->title,
+                    'purpose'          => $request->purpose,
+                    'expected_result'  => $request->expected_result,
+                    'brainstorm_ideas' => $request->brainstorm_ideas ?? [],
+                    'first_action'     => $request->first_action,
+                ]
+            );
 
             DB::commit();
 
             return response()->json([
-                'status' => true,
-                'message' => 'Projeto atualizado com sucesso',
-                'Project' => $project
+                'status'  => true,
+                'message' => 'Projeto criado com sucesso.',
+                'data'    => $project
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Falha ao atualizar projeto, tente novamente mais tarde',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function destroy($id)
+    /**
+     * Atualizar um projeto existente.
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'monthly_goal_id'  => 'sometimes|required|string',
+            'title'            => 'sometimes|required|string|max:255',
+            'purpose'          => 'sometimes|required|string',
+            'expected_result'  => 'sometimes|required|string',
+            'brainstorm_ideas' => 'nullable|array',
+            'brainstorm_ideas.*' => 'string',
+            'first_action'     => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+
+            $project = Project::where('id', $id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (! $project) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Projeto não encontrado.'
+                ], 404);
+            }
+
+            $data = $request->only([
+                'monthly_goal_id',
+                'title',
+                'purpose',
+                'expected_result',
+                'brainstorm_ideas',
+                'first_action',
+            ]);
+            $project->update($data);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Projeto atualizado com sucesso.',
+                'data'    => $project
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+    public function destroy(Request $request, string $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $userId = $this->getUserId($request);
 
-            $project = project::where('id', $id)
-                ->where('user_id', $user->id)
+            $project = Project::where('id', $id)
+                ->where('user_id', $userId)
                 ->first();
 
-            if (!$project) {
+            if (! $project) {
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Projeto não encontrado'
+                    'status'  => false,
+                    'message' => 'Projeto não encontrado.'
                 ], 404);
             }
 
@@ -160,83 +216,24 @@ class ProjectController extends Controller
             DB::commit();
 
             return response()->json([
-                'status' => true,
-                'message' => 'Projeto apagado com sucesso'
+                'status'  => true,
+                'message' => 'Projeto eliminado.'
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Falha ao apagar projeto, tente novamente mais tarde',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
+            return $this->errorResponse($e);
         }
     }
 
-    public function show($id)
+    /**
+     * Resposta padronizada de erro.
+     */
+    private function errorResponse(Exception $e): JsonResponse
     {
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
-
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuário não autenticado.'
-                ], 401);
-            }
-
-            $project = project::where('id', $id)
-                ->where('user_id', $user->id)
-                ->with(['MonthlyGoals:id,month,description'])
-                ->first();
-
-            if (!$project) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Projeto não encontrado.'
-                ], 404);
-            }
-
-            return response()->json([
-                'status' => true,
-                'Project' => $project->designation,
-                'purpose' => $project->purpose,
-                'expected result' => $project->expected_result,
-                'Monthy goals' => $project->MonthlyGoals->description,
-                'Month' => $project->MonthlyGoals->month,
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocorreu um erro inesperado.',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Token expirado ou inválido! Faça login novamente'
-            ], 401);
-        }
+        return response()->json([
+            'status'  => false,
+            'message' => 'Erro interno, volte a tentar mais tarde.',
+            'error'   => config('app.debug') ? $e->getMessage() : null
+        ], 500);
     }
-
-
-
-
-    // public function show($id)
-    // {
-
-    //     $project = Project::with('tasks')->findOrFail($id);
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'Project' => $project
-    //     ]);
-    // }
-
 }

@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\ListController;
 use App\Http\Controllers\Api\LongTermVisionController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\MonthlyGoalController;
+use App\Http\Controllers\Api\ProjectActionController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\PurposeController;
 use App\Http\Controllers\Api\TaskController;
+use App\Models\ProjectAction;
 use Illuminate\Support\Facades\Route;
 
 
@@ -148,11 +150,24 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('projects')->group(function () {
 
-            Route::post('/', [ProjectController::class, 'create'])->name('Projects.create');
+            Route::post('/', [ProjectController::class, 'store'])->name('projects.store');
             Route::get('/', [ProjectController::class, 'index'])->name('Projects.index');
             Route::get('/{id}', [ProjectController::class, 'show'])->name('Projects.show');
             Route::put('/{id}', [ProjectController::class, 'update'])->name('Projects.update');
             Route::delete('/{id}', [ProjectController::class, 'destroy'])->name('Projects.delete');
+        });
+
+
+        //Accoes no projeto
+
+        Route::prefix('project_action')->group(function () {
+
+            Route::post('/', [ProjectActionController::class, 'store'])->name('projectAction.store');
+            Route::get('/', [ProjectActionController::class, 'index'])->name('projectAction.index');
+            Route::get('/{id}', [ProjectActionController::class, 'show'])->name('projectAction.show');
+            Route::put('/{id}', [ProjectActionController::class, 'update'])->name('projectAction.update');
+            Route::delete('/{id}', [ProjectActionController::class, 'destroy'])->name('projectAction.delete');
+            Route::post('/{id}/move', [ProjectActionController::class, 'move'])->name('projectAction.delete');
         });
     });
 });
