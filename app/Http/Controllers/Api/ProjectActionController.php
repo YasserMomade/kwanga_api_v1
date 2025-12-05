@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Scalar\String_;
 
 class ProjectActionController extends Controller
 {
@@ -205,6 +206,87 @@ class ProjectActionController extends Controller
     }
 
 
+    public function isDone(Request $request, String $id)
+    {
+
+        DB::beginTransaction();
+
+        try {
+
+            $userId = $this->getUserId($request);
+
+            $action = ProjectAction::where('id', $id)
+                ->whereHas('project', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->first();
+
+            if (! $action) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Ação não encontrada.'
+                ], 404);
+            }
+
+
+            $action->is_done = true;
+            $action->save();
+            DB::commit();
+
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Ação marcada como concluida.',
+                'data'    => $action
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+
+    public function toggleDone(Request $request, String $id)
+    {
+
+        DB::beginTransaction();
+
+        try {
+
+            $userId = $this->getUserId($request);
+
+
+            $action = ProjectAction::where('id', $id)
+                ->whereHas('project', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->first();
+
+            if (! $action) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Ação não encontrada.'
+                ], 404);
+            }
+
+            $action->is_done  = !$action->is_done;
+
+            $action->save();
+            DB::commit();
+            return response()->json([
+                'status'  => true,
+                'message' => $action->is_done ? 'Ação marcada comoconcluida.' : 'Ação marcada como não concluida.',
+                'data'    => $action
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+
+
+
     /**
      * Mover uma ação.
      */
@@ -276,6 +358,93 @@ class ProjectActionController extends Controller
     }
 
 
+
+    /**
+     * Mover multiplas acoes de uma vez.
+     *
+     * Espera algo assim no body:
+     * {
+     *   "ids": ["acao-1", "acao-2"],
+     *   "new_project_id": "proj-123",
+     *   "order_index": 5 // opcional, índice inicial
+     * }
+     */
+    public function moveMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids'           => 'required|array|min:1',
+            'ids.*'         => 'string',
+            'new_project_id' => 'required|string|exists:projects,id',
+            'order_index'   => 'nullable|integer',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+            $ids    = $request->ids;
+
+
+            $newProject = Project::where('id', $request->new_project_id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (! $newProject) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Projeto de destino não encontrado'
+                ], 404);
+            }
+
+            // Buscar acoes que pertençam a este utilizador (via projeto)
+            $actions = ProjectAction::whereIn('id', $ids)
+                ->whereHas('project', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->orderBy('order_index')
+                ->get();
+
+            if ($actions->isEmpty()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Nenhuma das ações foi encontrada'
+                ], 404);
+            }
+
+            // Definir order_index inicial
+            if ($request->has('order_index')) {
+                $currentIndex = (int) $request->order_index;
+            } else {
+                $max = ProjectAction::where('project_id', $newProject->id)->max('order_index');
+                $currentIndex = is_null($max) ? 0 : $max + 1;
+            }
+
+            $updatedActions = [];
+
+            foreach ($actions as $action) {
+                $action->project_id  = $newProject->id;
+                $action->order_index = $currentIndex++;
+                $action->save();
+                $updatedActions[] = $action;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'        => true,
+                'message'       => count($updatedActions) . 'Ações movidas com sucesso.',
+                'target_project' => $newProject->title,
+                'ids'           => $ids,
+                'data'          => $updatedActions,
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+
+
     /**
      * Remover uma aco.
      */
@@ -306,6 +475,47 @@ class ProjectActionController extends Controller
             return response()->json([
                 'status'  => true,
                 'message' => 'Ação eliminada.'
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+    public function destroyMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+            $ids    = $request->ids;
+
+            $query = ProjectAction::whereIn('id', $ids)
+                ->whereHas('project', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                });
+
+            $foundCount = $query->count();
+
+            if ($foundCount === 0) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Nenhuma das ações foi encontrada.'
+                ], 404);
+            }
+
+            $query->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'        => true,
+                'message'       => "$foundCount Ações eliminadas com sucesso."
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();

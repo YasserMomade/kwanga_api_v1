@@ -152,22 +152,29 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/', [ProjectController::class, 'store'])->name('projects.store');
             Route::get('/', [ProjectController::class, 'index'])->name('Projects.index');
+            Route::get('/archived', [ProjectController::class, 'archived'])->name('Projects.index');
             Route::get('/{id}', [ProjectController::class, 'show'])->name('Projects.show');
             Route::put('/{id}', [ProjectController::class, 'update'])->name('Projects.update');
             Route::delete('/{id}', [ProjectController::class, 'destroy'])->name('Projects.delete');
+            Route::post('/delete_multiple', [ProjectController::class, 'destroyMultiple']);
+            Route::post('/archive_multiple', [ProjectController::class, 'archiveMultiple']);
+            Route::post('{id}/archive', [ProjectController::class, 'archive'])->name('Projects.archive');
         });
 
 
         //Accoes no projeto
 
-        Route::prefix('project_action')->group(function () {
+        Route::prefix('project_actions')->group(function () {
 
             Route::post('/', [ProjectActionController::class, 'store'])->name('projectAction.store');
             Route::get('/', [ProjectActionController::class, 'index'])->name('projectAction.index');
             Route::get('/{id}', [ProjectActionController::class, 'show'])->name('projectAction.show');
             Route::put('/{id}', [ProjectActionController::class, 'update'])->name('projectAction.update');
             Route::delete('/{id}', [ProjectActionController::class, 'destroy'])->name('projectAction.delete');
+            Route::post('/{id}/done', [ProjectActionController::class, 'toggleDone'])->name('projectAction.delete');
             Route::post('/{id}/move', [ProjectActionController::class, 'move'])->name('projectAction.delete');
+            Route::post('/move_multiple', [ProjectActionController::class, 'moveMultiple']);
+            Route::post('/delete_multiple', [ProjectActionController::class, 'destroyMultiple']);
         });
     });
 });

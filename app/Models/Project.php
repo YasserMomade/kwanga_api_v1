@@ -19,8 +19,7 @@ class Project extends Model
         'title',
         'purpose',
         'expected_result',
-        'brainstorm_ideas',
-        'first_action',
+        'is_archived',
         //'created_at',
         //'updated_at',
 
