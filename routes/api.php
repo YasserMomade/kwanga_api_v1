@@ -175,6 +175,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/{id}/move', [ProjectActionController::class, 'move'])->name('projectAction.delete');
             Route::post('/move_multiple', [ProjectActionController::class, 'moveMultiple']);
             Route::post('/delete_multiple', [ProjectActionController::class, 'destroyMultiple']);
+            Route::post('/{id}/link_to_action_list', [ProjectActionController::class, 'linkToActionList']);
         });
     });
 });

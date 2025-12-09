@@ -84,7 +84,7 @@ class LongTermVisionController extends Controller
 
             $userId = $this->getUserId($request);
 
-            $longTermVision = LongTermVision::create(
+            $longTermVision = LongTermVision::updateOrCreate(
                 ['id' => $request->id],
                 [
                     'user_id' =>  $userId,
@@ -150,7 +150,7 @@ class LongTermVisionController extends Controller
     {
         $request->validate([
             'life_area_id' => 'sometimes|exists:life_areas,id',
-            'description' => 'sometimes|string',
+            'description' => 'sometimes|string|max:255',
             'deadline' => 'nullable'
         ]);
 

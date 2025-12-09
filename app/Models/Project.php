@@ -20,8 +20,8 @@ class Project extends Model
         'purpose',
         'expected_result',
         'is_archived',
-        //'created_at',
-        //'updated_at',
+        'created_at',
+        'updated_at',
 
     ];
 

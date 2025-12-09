@@ -18,6 +18,8 @@ class ProjectAction extends Model
         'description',
         'order_index',
         'is_done',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [
@@ -33,5 +35,10 @@ class ProjectAction extends Model
     public function Order($query)
     {
         return $query->orderBy('order_index');
+    }
+
+    public function task()
+    {
+        return $this->belongsTo(Task::class, 'linked_action_id');
     }
 }

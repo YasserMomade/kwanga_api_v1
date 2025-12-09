@@ -226,7 +226,7 @@ class ListController extends Controller
 
             $request->validate([
                 'ids' => 'required|array',
-                'ids.*' => 'integer'
+                'ids.*' => 'string'
             ]);
 
 

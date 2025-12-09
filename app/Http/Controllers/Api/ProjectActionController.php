@@ -9,7 +9,8 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use PhpParser\Node\Scalar\String_;
+use App\Models\Task;
+use App\Models\ListModel;
 
 class ProjectActionController extends Controller
 {
@@ -135,6 +136,8 @@ class ProjectActionController extends Controller
                     'description' => $request->description,
                     'order_index' => $request->input('order_index', 0),
                     'is_done'     => $request->boolean('is_done', false),
+                    'created_at' => $request->created_at ?? now(),
+                    'updated_at' => $request->updated_at ?? now()
                 ]
             );
 
@@ -142,7 +145,7 @@ class ProjectActionController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Ação guardada com sucesso.',
+                'message' => 'Tarefa criada com sucesso.',
                 'data'    => $action
             ], 200);
         } catch (Exception $e) {
@@ -154,6 +157,7 @@ class ProjectActionController extends Controller
     /**
      * Atualizar uma ação específica.
      */
+
     public function update(Request $request, string $id): JsonResponse
     {
         $request->validate([
@@ -167,6 +171,7 @@ class ProjectActionController extends Controller
         try {
             $userId = $this->getUserId($request);
 
+            /** @var ProjectAction|null $action */
             $action = ProjectAction::where('id', $id)
                 ->whereHas('project', function ($q) use ($userId) {
                     $q->where('user_id', $userId);
@@ -180,6 +185,7 @@ class ProjectActionController extends Controller
                 ], 404);
             }
 
+            // Dados a atualizar na ação
             $data = $request->only([
                 'description',
                 'order_index',
@@ -189,10 +195,30 @@ class ProjectActionController extends Controller
                 $data['is_done'] = $request->boolean('is_done');
             }
 
+            $data['updated_at'] = $request->updated_at ?? now();
 
             $action->update($data);
 
+            // --- Sincronizar com Task associada, se existir ---
+            $taskUpdate = [];
+
+            if (array_key_exists('description', $data)) {
+                $taskUpdate['designation'] = $action->description;
+            }
+
+            if (array_key_exists('is_done', $data)) {
+                $taskUpdate['completed'] = $action->is_done;
+            }
+
+            if (! empty($taskUpdate)) {
+                // Atualiza todas as tasks ligadas por project_action_id
+                Task::where('linked_action_id', $action->id)->update($taskUpdate);
+            }
+
             DB::commit();
+
+            //recarrega a relacao
+            $action->load('task');
 
             return response()->json([
                 'status'  => true,
@@ -206,15 +232,14 @@ class ProjectActionController extends Controller
     }
 
 
-    public function isDone(Request $request, String $id)
+    public function toggleDone(Request $request, string $id): JsonResponse
     {
-
         DB::beginTransaction();
 
         try {
-
             $userId = $this->getUserId($request);
 
+            /** @var ProjectAction|null $action */
             $action = ProjectAction::where('id', $id)
                 ->whereHas('project', function ($q) use ($userId) {
                     $q->where('user_id', $userId);
@@ -228,55 +253,25 @@ class ProjectActionController extends Controller
                 ], 404);
             }
 
-
-            $action->is_done = true;
+            // Alternar status da acao do projeto
+            $action->is_done = ! $action->is_done;
             $action->save();
-            DB::commit();
 
+            // Sincronizar diretamente nas tasks ligadas a esta tarefa
+            Task::where('linked_action_id', $action->id)
+                ->update(['completed' => $action->is_done]);
+
+            // 3)  recarrega a relacao para devolver com a task atualizada
+            $action->load('task');
+
+            DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Ação marcada como concluida.',
-                'data'    => $action
-            ], 200);
-        } catch (Exception $e) {
-            DB::rollBack();
-            return $this->errorResponse($e);
-        }
-    }
-
-
-    public function toggleDone(Request $request, String $id)
-    {
-
-        DB::beginTransaction();
-
-        try {
-
-            $userId = $this->getUserId($request);
-
-
-            $action = ProjectAction::where('id', $id)
-                ->whereHas('project', function ($q) use ($userId) {
-                    $q->where('user_id', $userId);
-                })
-                ->first();
-
-            if (! $action) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Ação não encontrada.'
-                ], 404);
-            }
-
-            $action->is_done  = !$action->is_done;
-
-            $action->save();
-            DB::commit();
-            return response()->json([
-                'status'  => true,
-                'message' => $action->is_done ? 'Ação marcada comoconcluida.' : 'Ação marcada como não concluida.',
-                'data'    => $action
+                'message' => $action->is_done
+                    ? 'Ação marcada como concluída.'
+                    : 'Ação marcada como não concluída.',
+                'data'    => $action,
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
@@ -366,7 +361,7 @@ class ProjectActionController extends Controller
      * {
      *   "ids": ["acao-1", "acao-2"],
      *   "new_project_id": "proj-123",
-     *   "order_index": 5 // opcional, índice inicial
+     * 
      * }
      */
     public function moveMultiple(Request $request): JsonResponse
@@ -522,6 +517,103 @@ class ProjectActionController extends Controller
             return $this->errorResponse($e);
         }
     }
+
+
+    /**
+     * Copiar uma accao de projeto para uma lista de accao 
+     * e manter ligacao bidirecional.
+     */
+
+
+    public function linkToActionList(Request $request, string $id): JsonResponse
+    {
+
+        $request->validate([
+            'list_id' => 'nullable|string|exists:lists,id'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            $userId = $this->getUserId($request);
+
+            $action = ProjectAction::where('id', $id)
+                ->whereHas('project', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->first();
+
+
+            if (! $action) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Ação não encontrada.'
+                ], 404);
+            }
+
+            // Verficar se o type da lista e action
+            if ($request->filled('list_id')) {
+                $list = ListModel::where('id', $request->list_id)
+                    ->where('user_id', $userId)
+                    ->where('type', 'action')
+                    ->first();
+
+                if (! $list) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Lista de destino não encontrada ou não é do tipo action.'
+                    ], 404);
+                }
+            } else {
+                // Se nao vier list_id, pega a primeira lista type=action do utilizador
+                $list = ListModel::where('user_id', $userId)
+                    ->where('type', 'action')
+                    ->first();
+            }
+
+            //Criar ou atualizar a tarefa ligada a esta ProjectAction
+
+            if ($action->task) {
+                // Já existia task ligada entao so atualiza e muda de lista se preciso
+                $task = $action->task;
+                $task->list_id     = $list->id;
+                $task->designation = $action->description;
+                $task->completed   = $action->is_done;
+                $task->save();
+            } else {
+                // Ainda nao existe task ligada entao cria
+                $task = Task::updateOrcreate(
+                    ['id' => $request->id],
+                    [
+                        'user_id'          => $userId,
+                        'list_id'          => $list->id,
+                        'designation'      => $action->description,
+                        'completed'        => $action->is_done ?? false,
+                        'linked_action_id' => $action->id,
+                        'has_due_date'     => false,
+                        'has_reminder'     => false,
+                        'has_frequency'    => false,
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Tarefa associada a lista ',
+                'data'    => [
+                    'project_action' => $action->fresh('task'),
+                    'task'           => $task,
+                ],
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
 
     private function errorResponse(Exception $e): JsonResponse
     {

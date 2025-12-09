@@ -84,8 +84,9 @@ class MonthlyGoalController extends Controller
             $userId = $this->getUserId($request);
 
             $monthlyGoal = MonthlyGoal::create(
-                ['id' => $request->id],
                 [
+
+                    'id' => $request->id,
                     'user_id' =>  $userId,
                     'annual_goals_id' => $request->annual_goals_id,
                     'description' => $request->description,
@@ -120,7 +121,6 @@ class MonthlyGoalController extends Controller
 
             $monthlyGoal = MonthlyGoal::where('id', $id)
                 ->where('user_id', $userId)
-                ->with(['annualGoal.longTermVision.lifeArea:id,designation'])
                 ->first();
 
             if (!$monthlyGoal) {

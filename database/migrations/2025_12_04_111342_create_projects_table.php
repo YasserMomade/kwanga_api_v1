@@ -21,8 +21,7 @@ class CreateProjectsTable extends Migration
             $table->string('title');
             $table->text('purpose');
             $table->text('expected_result');
-            $table->json('brainstorm_ideas')->nullable();
-            $table->text('first_action')->nullable();
+            $table->boolean('is_archived')->default(false);
 
             $table->timestamps();
         });

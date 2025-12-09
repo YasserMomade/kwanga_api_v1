@@ -83,8 +83,9 @@ class AnnualGoalController extends Controller
             $userId = $this->getUserId($request);
 
             $annualGoal = AnnualGoal::create(
-                ['id' => $request->id],
                 [
+
+                    'id' => $request->id,
                     'user_id' =>  $userId,
                     'long_term_vision_id' => $request->long_term_vision_id,
                     'description' => $request->description,

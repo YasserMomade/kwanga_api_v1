@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TaskRequest;
 use App\Models\ListModel;
+use App\Models\ProjectAction;
 use App\Models\Task;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -205,22 +206,21 @@ class TaskController extends Controller
 
     /**
      * Atualiza uma tarefa existente.
-     * Pode mover de uma lista de entrada para uma de ação.
+     * Pode mover de uma lista de entrada para uma de accao.
      */
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
-
         $request->validate([
-            'designation' => 'sometimes|string|max:255',
-            'completed' => 'sometimes|boolean',
-            'list_id' => 'sometimes|exists:lists,id',
-            'has_due_date' => 'boolean',
-            'due_date' => 'nullable|date',
-            'has_reminder' => 'boolean',
+            'designation'       => 'sometimes|string|max:255',
+            'completed'         => 'sometimes|boolean',
+            'list_id'           => 'sometimes|exists:lists,id',
+            'has_due_date'      => 'sometimes|boolean',
+            'due_date'          => 'nullable|date',
+            'has_reminder'      => 'sometimes|boolean',
             'reminder_datetime' => 'nullable|date',
-            'has_frequency' => 'boolean',
-            'frequency_days' => 'nullable|array',
+            'has_frequency'     => 'sometimes|boolean',
+            'frequency_days'    => 'nullable|array',
         ]);
 
         DB::beginTransaction();
@@ -228,43 +228,82 @@ class TaskController extends Controller
         try {
             $userId = $this->getUserId($request);
 
-            $task = Task::where('id', $id)->where('user_id', $userId)->firstOrFail();
+            /** @var Task $task */
+            $task = Task::where('id', $id)
+                ->where('user_id', $userId)
+                ->first;
 
-            /**
-             * Parte para mudar uma tarefa de lista
-             */
+            if (! $task) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Tarefa não encontrada.'
+                ], 404);
+            }
 
+            //  garantir que a nova lista e do user
             if ($request->has('list_id') && $request->list_id != $task->list_id) {
+                $newList = ListModel::where('id', $request->list_id)
+                    ->where('user_id', $userId)
+                    ->first;
 
-                $newList = ListModel::where('id', $request->list_id)->where('user_id', $userId)->firstOrFail();
+                if (! $newList) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Lista não encontrada.'
+                    ], 404);
+                }
 
                 $task->list_id = $newList->id;
-
-                $task->fill($request->only([
-                    'designation',
-                    'completed',
-                    'has_due_date',
-                    'due_date',
-                    'has_reminder',
-                    'reminder_datetime',
-                    'has_frequency',
-                    'frequency_days',
-                ]));
-
-
-                $task->save();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => "Atualizado com sucesso",
-                    'data' => $task,
-                ], 200);
             }
+
+            //Atualizar restantes campos da Task
+            $task->fill($request->only([
+                'designation',
+                'completed',
+                'has_due_date',
+                'due_date',
+                'has_reminder',
+                'reminder_datetime',
+                'has_frequency',
+                'frequency_days',
+            ]));
+
+            $task->save();
+
+            // sincronizar com ProjectAction caso exista
+            $task->load(['projectAction', 'list']);
+
+            if ($task->projectAction) {
+                $fields = [];
+
+                if ($request->has('designation')) {
+                    $fields['description'] = $task->designation;
+                }
+
+                if ($request->has('completed')) {
+                    $fields['is_done'] = $task->completed;
+                }
+
+
+                if (! empty($fields)) {
+                    ProjectAction::where('id', $task->linked_action_id)
+                        ->update($fields);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => "Atualizado com sucesso",
+                'data'    => $task,
+            ], 200);
         } catch (Exception $e) {
             DB::rollBack();
             return $this->errorResponse($e);
         }
     }
+
 
     public function moveTask(Request $request, $id)
     {
@@ -277,11 +316,25 @@ class TaskController extends Controller
 
             $task = Task::where('id', $id)
                 ->where('user_id', $userId)
-                ->firstOrFail();
+                ->first();
+
+            if (! $task) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Tarefa não encontrada.'
+                ], 404);
+            }
 
             $newList = ListModel::where('id', $request->list_id)
                 ->where('user_id', $userId)
-                ->firstOrFail();
+                ->first();
+
+            if (! $newList) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Tarefa não encontrada.'
+                ], 404);
+            }
 
             $task->list_id = $newList->id;
             $task->save();
@@ -321,6 +374,14 @@ class TaskController extends Controller
 
             $task->completed = !$task->completed;
             $task->save();
+
+            $task->load(['projectAction', 'list']);
+
+            if ($task->projectAction && $task->list && $task->list->type === 'action') {
+                $projectAction = $task->projectAction;
+                $projectAction->is_done = $task->completed;
+                $projectAction->save();
+            }
 
             DB::commit();
 

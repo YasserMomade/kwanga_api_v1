@@ -234,7 +234,7 @@ class LifeAreaController extends Controller
      * Deletar uma area da vida.
      */
 
-    public function destroy($request, $id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         DB::beginTransaction();
 

@@ -146,6 +146,8 @@ class ProjectController extends Controller
                     'purpose'          => $request->purpose,
                     'expected_result'  => $request->expected_result,
                     'is_archived' => false,
+                    'created_at' => $request->created_at ?? now(),
+                    'updated_at' => $request->updated_at ?? now()
                 ]
             );
 
@@ -196,6 +198,9 @@ class ProjectController extends Controller
                 'purpose',
                 'expected_result',
             ]);
+
+            $data['updated_at'] = $request->updated_at ?? now();
+
             $project->update($data);
 
             DB::commit();
@@ -316,7 +321,6 @@ class ProjectController extends Controller
             return response()->json([
                 'status'        => true,
                 'message'       => " $foundCount  Projetos eliminados com sucesso.",
-                'deleted_count' => $foundCount,
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();

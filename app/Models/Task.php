@@ -23,7 +23,8 @@ class Task extends Model
         'has_reminder',
         'reminder_datetime',
         'has_frequency',
-        'frequency_days'
+        'frequency_days',
+        'linked_action_id'
     ];
 
     protected $casts = [
@@ -40,9 +41,13 @@ class Task extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-
     public function list()
     {
         return $this->belongsTo(ListModel::class, 'list_id');
+    }
+
+    public function projectAction()
+    {
+        return $this->belongsTo(ProjectAction::class, 'linked_action_id');
     }
 }
