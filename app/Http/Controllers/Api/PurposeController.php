@@ -126,7 +126,7 @@ class PurposeController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Proposito criado com sucesso',
+                'message' => 'Proposito Salvo com sucesso',
                 'data' => $purpose
             ], 200);
         } catch (Exception $e) {
@@ -205,7 +205,7 @@ class PurposeController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Eliminado.'
+                'message' => 'Proposito eliminado com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();

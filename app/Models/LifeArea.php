@@ -39,4 +39,9 @@ class LifeArea extends Model
     {
         return $query->where('user_id', $userId);
     }
+
+    public function communities()
+    {
+        return $this->hasMany(Community::class, 'life_area_id');
+    }
 }

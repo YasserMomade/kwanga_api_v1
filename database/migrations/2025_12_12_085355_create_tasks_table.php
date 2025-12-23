@@ -14,19 +14,26 @@ class CreateTasksTable extends Migration
     public function up()
     {
         Schema::create('tasks', function (Blueprint $table) {
+            // Primary key
             $table->uuid('id')->primary();
+
+            // Relacionamento com users
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->onUpdate('cascade');
             $table->uuid('list_id')->nullable();
-            $table->foreign('list_id')->references('id')->on('lists')->onDelete('cascade')->onUpdate('cascade');
-            $table->string('designation');
+            $table->foreign('list_id')->references('id')->on('lists')->onDelete('set null')->onUpdate('cascade');
+            $table->uuid('project_id')->nullable();
+            $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade')->onUpdate('cascade');
+
+            $table->string('description');
+            $table->integer('order_index')->nullable()->index();
+            $table->dateTime('deadline')->nullable();
+            $table->dateTime('time')->nullable();
+            $table->json('frequency')->nullable();
             $table->boolean('completed')->default(false);
-            $table->boolean('has_due_date')->default(false);
-            $table->date('due_date')->nullable();
-            $table->boolean('has_reminder')->default(false);
-            $table->dateTime('reminder_datetime')->nullable();
-            $table->boolean('has_frequency')->default(false);
-            $table->json('frequency_days')->nullable();
+            $table->uuid('linked_action_id')->nullable()->index();
             $table->timestamps();
+            $table->index(['user_id', 'list_id']);
+            $table->index('project_id');
         });
     }
 

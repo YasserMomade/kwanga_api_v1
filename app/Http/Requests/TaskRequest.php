@@ -24,8 +24,8 @@ class TaskRequest extends FormRequest
     public function rules()
     {
         return [
-            'list_id' => 'required|exists:lists,id',
-            'designation' => 'required|string|max:255',
+            'list_id' => 'nullable|exists:lists,id',
+            'description' => 'required|string|max:255',
             'completed' => 'boolean',
             'has_due_date' => 'boolean',
             'due_date' => 'nullable|date',

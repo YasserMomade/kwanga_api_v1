@@ -155,7 +155,7 @@ class ProjectController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Projeto criado com sucesso.',
+                'message' => 'Projeto Salvo com sucesso.',
                 'data'    => $project
             ], 200);
         } catch (Exception $e) {
@@ -310,7 +310,7 @@ class ProjectController extends Controller
             if ($foundCount === 0) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Nenhum dos projetos foi encontrado para este utilizador.'
+                    'message' => 'Nenhum dos projetos foi encontrado .'
                 ], 404);
             }
 
@@ -352,7 +352,7 @@ class ProjectController extends Controller
             if ($foundCount === 0) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Nenhum dos projetos foi encontrado para este utilizador.'
+                    'message' => 'Nenhum dos projetos foi encontrado .'
                 ], 404);
             }
 

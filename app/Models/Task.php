@@ -12,28 +12,27 @@ class Task extends Model
     use HasUuid;
 
     protected $fillable = [
-
         'id',
         'user_id',
         'list_id',
-        'designation',
+        'project_id',
+        'description',
+        'order_index',
+        'deadline',
+        'time',
+        'frequency',
         'completed',
-        'has_due_date',
-        'due_date',
-        'has_reminder',
-        'reminder_datetime',
-        'has_frequency',
-        'frequency_days',
-        'linked_action_id'
+        'linked_action_id',
     ];
 
     protected $casts = [
-        'completed' => 'boolean',
-        'has_due_date' => 'boolean',
-        'has_reminder' => 'boolean',
-        'has_frequency' => 'boolean',
-        'frequency_days' => 'array',
+        'deadline'    => 'datetime',
+        'time'        => 'datetime',
+        'frequency'   => 'array',
+        'completed'   => 'boolean',
+        'order_index' => 'integer',
     ];
+
 
 
     public function user()
@@ -46,8 +45,8 @@ class Task extends Model
         return $this->belongsTo(ListModel::class, 'list_id');
     }
 
-    public function projectAction()
+    public function project()
     {
-        return $this->belongsTo(ProjectAction::class, 'linked_action_id');
+        return $this->belongsTo(Project::class, 'project_id');
     }
 }

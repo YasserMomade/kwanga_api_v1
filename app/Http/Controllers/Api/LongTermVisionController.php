@@ -101,7 +101,7 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Visão a Longo Prazo Criada com Secesso',
+                'message' => 'Visão a longo praza salva com sucesso',
                 'data' => $longTermVision
             ], 201);
         } catch (Exception   $e) {
@@ -128,7 +128,7 @@ class LongTermVisionController extends Controller
             if (!$longTermVision) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Visao a longo prazo não  encontrada'
+                    'message' => ' Visão a longo prazo não  encontrada'
                 ], 404);
             }
             return response()->json([
@@ -186,7 +186,7 @@ class LongTermVisionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Visão a Longo Prazo atualizada com sucesso.',
+                'message' => 'Visão a longo prazo atualizada com sucesso.',
                 'data' => $longTermVision
             ], 200);
         } catch (Exception $e) {

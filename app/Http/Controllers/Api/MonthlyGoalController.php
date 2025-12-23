@@ -63,6 +63,63 @@ class MonthlyGoalController extends Controller
         }
     }
 
+
+    public function convertMonthToNumber($month): int
+    {
+
+        if (is_numeric($month)) {
+            $n = (int) $month;
+            if ($n >= 1 && $n <= 12) {
+                return $n;
+            }
+            throw new \InvalidArgumentException("Mês inválido: {$month}. Use 1 a 12.");
+        }
+        return $this->monthNameToNumber((string) $month);
+    }
+
+    private function monthNameToNumber(string $month): int
+    {
+        $m = mb_strtolower(trim($month), 'UTF-8');
+
+        // remover acentos
+        $m = strtr($m, [
+            'á' => 'a',
+            'à' => 'a',
+            'â' => 'a',
+            'ã' => 'a',
+            'é' => 'e',
+            'ê' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ô' => 'o',
+            'õ' => 'o',
+            'ú' => 'u',
+            'ç' => 'c'
+        ]);
+
+        $map = [
+            'janeiro' => 1,
+            'fevereiro' => 2,
+            'marco' => 3,
+            'abril' => 4,
+            'maio' => 5,
+            'junho' => 6,
+            'julho' => 7,
+            'agosto' => 8,
+            'setembro' => 9,
+            'outubro' => 10,
+            'novembro' => 11,
+            'dezembro' => 12,
+        ];
+
+        if (!isset($map[$m])) {
+            throw new \InvalidArgumentException("Mês inválido: {$month}. Use nome do mês ou 1 a 12.");
+        }
+
+        return $map[$m];
+    }
+
+
     /**
      * Cria um novo objetivo mensal.
      */
@@ -73,7 +130,7 @@ class MonthlyGoalController extends Controller
         $request->validate([
             'annual_goals_id' => 'required|exists:annual_goals,id',
             'description' => 'required|string',
-            'month' => 'required|string|max:20',
+            'month' => 'required|',
         ]);
 
 
@@ -83,6 +140,8 @@ class MonthlyGoalController extends Controller
 
             $userId = $this->getUserId($request);
 
+            $monthNumber = $this->convertMonthToNumber($request->month);
+
             $monthlyGoal = MonthlyGoal::create(
                 [
 
@@ -90,7 +149,7 @@ class MonthlyGoalController extends Controller
                     'user_id' =>  $userId,
                     'annual_goals_id' => $request->annual_goals_id,
                     'description' => $request->description,
-                    'month' => $request->month,
+                    'month' => $monthNumber,
                     'created_at' => $request->created_at ?? now(),
                     'updated_at' => $request->updated_at ?? now()
                 ]
@@ -100,9 +159,15 @@ class MonthlyGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Objectivo mensal Criado com Secesso',
+                'message' => 'Objectivo mensal salvo com sucesso',
                 'data' => $monthlyGoal
             ], 201);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -149,7 +214,7 @@ class MonthlyGoalController extends Controller
         $request->validate([
             'annual_goals_id' => 'sometimes|exists:annual_goals,id',
             'description' => 'sometimes|string',
-            'month' => 'nullable|string|max:20',
+            'month' => 'sometimes',
         ]);
 
         DB::beginTransaction();
@@ -174,6 +239,10 @@ class MonthlyGoalController extends Controller
                 'month'
             ]);
 
+            if ($request->has('month')) {
+                $data['month'] = $this->convertMonthToNumber($request->month);
+            }
+
             $data['updated_at'] = $request->updated_at ?? now();
 
             $monthlyGoal->update($data);
@@ -187,6 +256,12 @@ class MonthlyGoalController extends Controller
                 'message' => 'Objetivo mensal atualizado com sucesso',
                 'Monthly goal' => $monthlyGoal
             ], 200);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -222,13 +297,57 @@ class MonthlyGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Eliminado'
+                'message' => 'Objetivo mensal eliminado com sucesso'
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse($e);
         }
     }
+
+    /**
+     * Deleta multiplos objetivos mensais.
+     */
+    public function destroyMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+
+            $ids = $request->ids;
+
+            $query = MonthlyGoal::where('user_id', $userId)
+                ->whereIn('id', $ids);
+
+            $foundCount = $query->count();
+
+            if ($foundCount === 0) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Nenhum dos objetivos mensais foi encontrado .'
+                ], 404);
+            }
+
+            $query->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => "$foundCount objetivos mensais eliminados com sucesso."
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
 
     /**
      * Resposta de erro padronizada.

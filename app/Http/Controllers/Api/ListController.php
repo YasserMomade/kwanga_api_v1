@@ -93,7 +93,7 @@ class ListController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => "Lista criada com sucesso",
+                'message' => "Lista salva com sucesso",
                 'data' => $list
             ], 201);
         } catch (Exception $e) {
@@ -163,7 +163,7 @@ class ListController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Atualizado com sucesso',
+                'message' => 'Lista atualizado com sucesso',
                 'data' => $list
             ], 200);
         } catch (Exception $e) {

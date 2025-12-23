@@ -2,6 +2,12 @@
 
 use App\Http\Controllers\Api\AnnualGoalController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Community\ChallengeController;
+use App\Http\Controllers\Api\Community\ChallengeParticipantController;
+use App\Http\Controllers\Api\Community\ChallengeParticipantTaskController;
+use App\Http\Controllers\Api\Community\ChallengeTaskController;
+use App\Http\Controllers\Api\Community\CommunityController;
+use App\Http\Controllers\Api\Community\CommunityMemberController;
 use App\Http\Controllers\Api\LifeAreaController;
 use App\Http\Controllers\Api\ListController;
 use App\Http\Controllers\Api\LongTermVisionController;
@@ -25,10 +31,12 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('auth')->group(function () {
 
-        Route::post('/register', [AuthController::class, 'register'])->name("auth.register");
-        Route::post('/verify_email', [AuthController::class, 'verifyEmail'])->name('auth.verifyEmail');
+        Route::post('/register', [AuthController::class, 'registerRequestOtp'])->name("auth.register");
+        Route::post('/register/verify_otp', [AuthController::class, 'registerVerifyOtp'])->name("auth.register");
+        //Route::post('/verify_email', [AuthController::class, 'verifyEmail'])->name('auth.verifyEmail');
         Route::post('/resend_code', [AuthController::class, 'resendVerificationCode']);
-        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('auth.Login');
+        Route::post('/login', [AuthController::class, 'loginRequestOtp'])->middleware('throttle:5,1')->name('auth.Login');
+        Route::post('/login/verify_otp', [AuthController::class, 'loginVerifyOtp'])->middleware('throttle:5,1')->name('auth.Login');
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.Logout');
     });
 
@@ -60,7 +68,7 @@ Route::prefix('v1')->group(function () {
 
 
         Route::prefix('users')->group(function () {
-
+            Route::put('/profile', [AuthController::class, 'updateProfile']);
             Route::get('/user', [AuthController::class, 'me'])->name("users.me");
         });
 
@@ -117,6 +125,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', [MonthlyGoalController::class, 'show'])->name('MonthlyGoals.show');
             Route::put('/{id}', [MonthlyGoalController::class, 'update'])->name('MonthlyGoals.update');
             Route::delete('/{id}', [MonthlyGoalController::class, 'destroy'])->name('MonthlyGoals.delete');
+            Route::delete('/destroy_multiple', [MonthlyGoalController::class, 'destroyMultiple']);
         });
 
 
@@ -132,7 +141,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/destroy_multiple', [ListController::class, 'destroyMultiple'])->name('lists.destroyMultiple');
         });
 
-        //Tarefas
+        //Tarefas nas listas
 
         Route::prefix('tasks')->group(function () {
 
@@ -144,6 +153,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
             Route::post('/delete_multiple', [TaskController::class, 'destroyMultiple'])->name('task.destroyMultiple');
             Route::patch('/{id}/move', [TaskController::class, 'moveTask'])->name('task.move');
+            Route::patch('/move_multiple', [TaskController::class, 'moveMultipleTasks'])->name('task.move');
+            Route::get('/{list_id}/tasks', [TaskController::class, 'indexByList']);
         });
 
         //Projetos
@@ -162,20 +173,73 @@ Route::prefix('v1')->group(function () {
         });
 
 
-        //Accoes no projeto
+        //Tarefas nos projetos
 
-        Route::prefix('project_actions')->group(function () {
+        Route::prefix('project_tasks')->group(function () {
+            Route::get('/', [TaskController::class, 'projectOnlyTasks'])->name('projectAction.index');
 
-            Route::post('/', [ProjectActionController::class, 'store'])->name('projectAction.store');
-            Route::get('/', [ProjectActionController::class, 'index'])->name('projectAction.index');
-            Route::get('/{id}', [ProjectActionController::class, 'show'])->name('projectAction.show');
-            Route::put('/{id}', [ProjectActionController::class, 'update'])->name('projectAction.update');
-            Route::delete('/{id}', [ProjectActionController::class, 'destroy'])->name('projectAction.delete');
-            Route::post('/{id}/done', [ProjectActionController::class, 'toggleDone'])->name('projectAction.delete');
-            Route::post('/{id}/move', [ProjectActionController::class, 'move'])->name('projectAction.delete');
-            Route::post('/move_multiple', [ProjectActionController::class, 'moveMultiple']);
-            Route::post('/delete_multiple', [ProjectActionController::class, 'destroyMultiple']);
-            Route::post('/{id}/link_to_action_list', [ProjectActionController::class, 'linkToActionList']);
+            Route::post('/', [TaskController::class, 'store'])->name('projectAction.store');
+            Route::get('/{id}', [TaskController::class, 'show'])->name('projectAction.show');
+            Route::put('/{id}', [TaskController::class, 'update'])->name('projectAction.update');
+            Route::delete('/{id}', [TaskController::class, 'destroy'])->name('projectAction.delete');
+            Route::post('/{id}/alter', [TaskController::class, 'alterstatus'])->name('projectAction.delete');
+            Route::post('/{id}/move', [TaskController::class, 'moveToProject'])->name('projectAction.move');
+            Route::patch('/{id}/link_to_list', [TaskController::class, 'linkToActionList'])->name('projectAction.move');
+            Route::post('/move_multiple_tasks', [TaskController::class, 'moveMultipleToProject'])->name('projectAction.delete');
+            Route::get('/{project_id}/tasks', [TaskController::class, 'indexByProject']);
+            Route::post('/delete_multiple', [TaskController::class, 'destroyMultiple'])->name('task.destroyMultiple');
+        });
+
+        //Comunidades
+
+        Route::prefix('communities')->group(function () {
+
+            Route::get('/', [CommunityController::class, 'index']);
+            Route::get('/my', [CommunityController::class, 'mycommunities']);
+            Route::get('/{id}', [CommunityController::class, 'show']);
+            Route::post('/', [CommunityController::class, 'store']);
+            Route::put('/{id}', [CommunityController::class, 'update']);
+            Route::post('/{id}/close', [CommunityController::class, 'close']);
+
+            Route::post('/{id}/join', [CommunityMemberController::class, 'join']);
+            Route::get('/{id}/join_requests', [CommunityMemberController::class, 'listJoinRequests']);
+            Route::post('/{id}/join_requests/{requestId}/approve', [CommunityMemberController::class, 'approve']);
+            Route::post('/{id}/join_requests/{requestId}/reject',  [CommunityMemberController::class, 'reject']);
+            Route::post('/{id}/leave', [CommunityMemberController::class, 'leave']);
+            Route::post('/{id}/members/{memberId}/remove',   [CommunityMemberController::class, 'removeMember']);
+            Route::post('/{id}/members/{memberId}/promote',  [CommunityMemberController::class, 'promoteMember']);
+        });
+
+        //Criacao de desafios
+
+        Route::prefix('communities')->group(function () {
+            Route::post('/{communityId}/challenges', [ChallengeController::class, 'store']);
+            Route::get('/{communityId}/challenges', [ChallengeController::class, 'index']);
+            Route::get('/{communityId}/challenges/{id}', [ChallengeController::class, 'show']);
+            Route::put('/{communityId}/challenges/{id}', [ChallengeController::class, 'update']);
+            Route::patch('/{communityId}/challenges/{id}', [ChallengeController::class, 'close']);
+
+
+            // Participar de desafios + ranking e proogresso
+
+            Route::post('/{communityId}/challenges/{id}/join', [ChallengeParticipantController::class, 'join']);
+            Route::Delete('/{communityId}/challenges/{id}/leave', [ChallengeParticipantController::class, 'leave']);
+            Route::post('/{communityId}/challenges/{id}/join', [ChallengeParticipantController::class, 'join']);
+            Route::get('/{communityId}/ranking', [ChallengeParticipantController::class, 'getCommunityRanking']);
+            Route::get('/{communityId}/challenges/{id}/progress', [ChallengeParticipantController::class, 'getChallengeProgress']);
+            Route::get('/{communityId}/progress', [ChallengeParticipantController::class, 'getCommunityProgress']);
+            Route::put('/{communityId}/challenges/{id}/{taskId}/alter', [ChallengeParticipantController::class, 'toggleStatus']);
+            Route::get('/users/tasks', [ChallengeParticipantController::class, 'listUserTasks']);
+        });
+
+        //Criacao de tarefas para desafios
+
+        Route::prefix('community_tasks')->group(function () {
+            Route::post('/{communityId}/challenges/{challengeId}', [ChallengeTaskController::class, 'store']);
+            Route::get('/{communityId}/challenges/{challengeId}', [ChallengeTaskController::class, 'index']);
+            Route::get('/{communityId}/challenges/{id}', [ChallengeTaskController::class, 'show']);
+            Route::put('/{communityId}/challenges/{challengeId}/{taskId}', [ChallengeTaskController::class, 'update']);
+            Route::delete('/{communityId}/challenges/{challengeId}/{taskId}', [ChallengeTaskController::class, 'destroy']);
         });
     });
 });

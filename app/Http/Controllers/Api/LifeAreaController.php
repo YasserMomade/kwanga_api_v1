@@ -169,7 +169,7 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Área de vida criada com sucesso',
+                'message' => 'Área da vida salva com sucesso',
                 'data' => $lifeArea
             ], 201);
         } catch (Exception $e) {
@@ -265,7 +265,7 @@ class LifeAreaController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Eliminado.'
+                'message' => 'Área da vida eliminada com sucesso.'
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();

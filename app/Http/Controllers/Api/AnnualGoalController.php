@@ -99,7 +99,7 @@ class AnnualGoalController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Objectivo anual Criado com Secesso',
+                'message' => 'Objectivo anual salvo com sucesso',
                 'date' => $annualGoal
             ], 201);
         } catch (Exception   $e) {

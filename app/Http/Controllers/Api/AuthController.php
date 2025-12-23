@@ -3,12 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginVerifyOtpRequest;
+use App\Http\Requests\RegisterVerifyOtpRequest;
+use App\Http\Requests\RequestOtpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Requests\UserRequest;
 use App\Mail\VerifyEmail;
 use App\Models\User;
+use App\Services\OtpService;
+use App\Services\SmsService;
+use App\Support\phone;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -269,6 +275,340 @@ class AuthController extends Controller
                 'message' => 'Erro ao efectuar logout.',
                 'error' =>  config('app.debug') ? $e->getMessage() : null
             ], 500);
+        }
+    }
+
+
+    public function registerRequestOtp(RequestOtpRequest $request, OtpService $otpService, Smsservice $sms)
+    {
+
+        $purpose = 'register';
+        $phone = Phone::normalizeMoz($request->phone);
+
+        DB::beginTransaction();
+
+        try {
+
+            $existingUser  = User::where('phone', $phone)->first();
+
+            if ($existingUser && $existingUser->phone_verified_at) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Este número já tem uma conta registada. Faça login.'
+                ], 409);
+            }
+
+            $user = User::firstOrCreate(
+                ['phone' => $phone],
+            );
+
+            $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
+
+            //Gerar otp
+
+            $generate = $otpService->generata($user, $purpose);
+
+            $sms->send($user->phone, "Código de verificação: {$generate['code']} (válido por {$otpService->minutes} min)");
+            return response()->json([
+                'status' => true,
+                'message' => 'conta criada com sucesso, faça a verificação.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro interno, volte a tentar mais tarde',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function registerVerifyOtp(RegisterVerifyOtpRequest $request, OtpService $otpService)
+    {
+        $phone = Phone::normalizeMoz($request->phone);
+        $purpose = 'register';
+
+        $user = User::where('phone', $phone)->first();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Utilizador não encontrado.'
+            ], 404);
+        }
+
+        $ok = $otpService->verify($user, $purpose, $request->code);
+        if (!$ok) {
+            return response()->json([
+                'status' => false,
+                'message' => 'código invalido.'
+            ], 400);
+        }
+
+        if (! $user->phone_verified_at) {
+            $user->update(['phone_verified_at' => now()]);
+        }
+
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Conta verificada com sucesso.',
+            'token' => $token,
+            'data' => [
+                'user' => $user->only(['id', 'phone', 'email', 'phone_verified_at'])
+            ]
+        ], 200);
+    }
+
+
+
+
+    public function loginRequestOtp(RequestOtpRequest $request, OtpService $otpService, SmsService $sms)
+    {
+
+        $phone = Phone::normalizeMoz($request->phone);
+        $purpose = 'login';
+
+        $user = User::where('phone', $phone)->first();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Utilizador não encontrado.'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
+            $generate = $otpService->generata($user, $purpose);
+            DB::commit();
+
+            $sms->send($user->phone, "Código de login: {$generate['code']} (válido por {$otpService->minutes} min)");
+
+
+            // return response()->json([
+            //     'status' => true,
+            //     'message' => 'OTP enviado para login.'
+            // ], 200);
+
+            return response()->json([
+                'status' => true,
+                'phone' => $user->phone,
+                'otp_message' => "Código de login: {$generate['code']} (válido por {$otpService->minutes} min)"
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro interno, volte a tentar mais tarde',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+    public function loginVerifyOtp(LoginVerifyOtpRequest $request, OtpService $otpService)
+    {
+
+        $phone = Phone::normalizeMoz($request->phone);
+        $purpose = 'login';
+
+        $user = User::where('phone', $phone)->first();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Utilizador não encontrado.'
+            ], 404);
+        }
+
+        $ok = $otpService->verify($user, $purpose, $request->code);
+        if (! $ok) {
+            return response()->json([
+                'status' => false,
+                'message' => 'código invalido.'
+            ], 400);
+        }
+
+        if (! $user->phone_verified_at) {
+            $user->update(['phone_verified_at' => now()]);
+        }
+
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Login efetuado com sucesso.',
+            'token' => $token,
+            'data' => [
+                'user' => $user->only(['id', 'phone', 'email'])
+            ]
+        ], 200);
+    }
+
+    public function registerResendOtp(RequestOtpRequest $request, OtpService $otpService, SmsService $sms)
+    {
+
+        $phone = Phone::normalizeMoz($request->phone);
+        $purpose = 'register';
+
+        DB::beginTransaction();
+
+        try {
+
+            $existingUser = User::where('phone', $phone)->first();
+
+
+            if ($existingUser && $existingUser->phone_verified_at) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Este número já tem uma conta registada. Faça login.'
+                ], 409);
+            }
+
+            $user = User::firstOrCreate(['phone' => $phone]);
+
+            $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
+
+            $generate = $otpService->generata($user, $purpose);
+
+            DB::commit();
+
+            $sms->send($user->phone, "Código de verificação: {$generate['code']} (válido por {$otpService->minutes} min)");
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP reenviado com sucesso.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro interno, volte a tentar mais tarde',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function loginResendOtp(RequestOtpRequest $request, OtpService $otpService, SmsService $sms)
+    {
+
+        $phone = Phone::normalizeMoz($request->phone);
+        $purpose = 'login';
+
+        $user = User::where('phone', $phone)->first();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Utilizador não encontrado.'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
+            $generate = $otpService->generata($user, $purpose);
+
+            DB::commit();
+
+            $sms->send($user->phone, "Código de login: {$generate['code']} (válido por {$otpService->minutes} min)");
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP reenviado com sucesso.
+                .'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Erro interno, volte a tentar mais tarde',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+    private function getUserId(Request $request): int
+    {
+        if (auth()->check()) {
+            $authId = auth()->id();
+
+            if ($request->has('user_id') && (int)$request->user_id !== $authId) {
+                abort(response()->json([
+                    'status' => false,
+                    'message' => 'O ID do utilizador enviado não corresponde ao autenticado.'
+                ], 403));
+            }
+
+            return $authId;
+        }
+
+        if ($request->has('user_id')) {
+            return (int)$request->user_id;
+        }
+
+        abort(response()->json([
+            'status' => false,
+            'message' => 'Identificação de utilizador necessária.'
+        ], 401));
+    }
+
+    private function errorResponce(Exception $e): JsonResponse
+    {
+        return response()->json([
+            'status' => false,
+            'message' => "Erro interno, volte a tentar mais tarde.",
+            'error' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+
+            $user = User::where('id', $userId)->first();
+
+            if (! $user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Utilizador não encontrado.'
+                ], 404);
+            }
+
+            $user->update([
+                'first_name'    => $request->first_name,
+                'last_name'     => $request->last_name,
+                'province'      => $request->province,
+                'gender'        => $request->gender,
+                'date_of_birth' => $request->date_of_birth,
+                'email'         => $request->email,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Perfil actualizado com sucesso.',
+                'data' => $user->only([
+                    'id',
+                    'phone',
+                    'email',
+                    'first_name',
+                    'last_name',
+                    'province',
+                    'gender',
+                    'date_of_birth',
+                    'phone_verified_at'
+                ])
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponce($e);
         }
     }
 }
