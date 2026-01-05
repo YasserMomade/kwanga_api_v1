@@ -39,8 +39,8 @@ class Project extends Model
         return $this->belongsTo(MonthlyGoal::class, 'monthly_goal_id');
     }
 
-    public function actions()
+    public function tasks()
     {
-        return $this->hasMany(ProjectAction::class, 'project_id');
+        return $this->hasMany(Task::class, 'project_id');
     }
 }

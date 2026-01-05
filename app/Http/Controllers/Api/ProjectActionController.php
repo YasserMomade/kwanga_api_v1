@@ -100,7 +100,7 @@ class ProjectActionController extends Controller
     }
 
     /**
-     * Criar / atualizar (via id) uma acao de projeto.
+     * Criar / atualizar uma acao de projeto.
      */
     public function store(Request $request): JsonResponse
     {

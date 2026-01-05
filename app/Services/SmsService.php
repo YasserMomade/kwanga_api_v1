@@ -6,54 +6,53 @@ use Exception;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
 
+
 class SmsService
 {
 
-    // public function send(string $phone, string $message) //: void
-    // {
+    public function send(string $phone, string $message): void
+    {
+        $token = config('mozesms.token');
+        $sender = config('mozesms.sender');
+        $url = config('mozesms.url');
 
-    //     $token = config('mozesms.token');
+        if (! $token || ! $url || ! $sender) {
+            throw new Exception('Configuração do MozeSMS incompleta.');
+        }
 
-    //     // if (1 == 1) {
-    //     //     return response()->json([
-    //     //         'data' => 'ola'
-    //     //     ]);
-    //     // }
 
-    //     if (!$token) {
-    //         throw new Exception('MOZESMS_TOKEN não configurado.');
-    //     }
+        $phone = ltrim($phone, '+');
+        $response = Http::withOptions(['verify' => false])->withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->post($url, [
+            'phone' => $phone,
+            'message' => $message,
+            'sender_id' => $sender,
+        ]);
 
-    //     $baseUrl = rtrim(config('mozesms.base_url', 'https://api.mozesms.com'), '/');
-    //     $senderId = config('mozesms.sender_id');
+        if ($response->failed()) {
+            logger()->error('Erro MozeSMS', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'json' => $response->json(),
+            ]);
+            throw new Exception('Falha ao enviar SMS.');
+        }
 
-    //     $phone = ltrim($phone, '+');
+        logger()->info('SMS enviado com sucesso', [
+            'phone' => $phone,
+        ]);
+    }
+}
 
-    //     //$response = HTTp::timeout(config('mozesms.timeout'))
-    //     $response = Http::withOptions(['verify' => false])
-    //         ->withHeaders([
-    //             'Authorization' => 'Bearer ' . $token,
-    //             'Content-Type' => 'application/json',
-    //         ])->post($baseUrl . '/v2/sms/send', [
-    //             'phone' => $phone,
-    //             'message' => $message,
-    //             'sender_id' => $senderId,
-    //         ]);
 
-    //     if (! $response->successful()) {
-    //         $body = $response->json();
-    //         $msg = is_array($body) ? ($body['message'] ?? null) : null;
-
-    //         throw new Exception($msg ?: ('Falha ao enviar SMS. HTTP ' . $response->status()));
-    //     }
-    // }
-
+/** 
 
     public function send(String $phone, String $message): void
     {
-
-        //TODO: codificar o codigo de envio de dmd
-
         logger()->info("SMS to {$phone}: {$message}");
     }
-}
+
+ */

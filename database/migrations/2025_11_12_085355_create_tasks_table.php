@@ -14,7 +14,6 @@ class CreateTasksTable extends Migration
     public function up()
     {
         Schema::create('tasks', function (Blueprint $table) {
-            // Primary key
             $table->uuid('id')->primary();
 
             // Relacionamento com users
@@ -25,7 +24,7 @@ class CreateTasksTable extends Migration
             $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade')->onUpdate('cascade');
 
             $table->string('description');
-            $table->integer('order_index')->nullable()->index();
+            $table->integer('order_index')->nullable()->index()->unique();
             $table->dateTime('deadline')->nullable();
             $table->dateTime('time')->nullable();
             $table->json('frequency')->nullable();

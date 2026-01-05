@@ -16,6 +16,8 @@ class CreateCommunitiesTable extends Migration
         Schema::create('communities', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignId('owner_id')->constrained('users')->onDelete('cascade');
+            $table->uuid('life_area_id');
+            $table->foreign('life_area_id')->references('id')->on('life_areas')->onDelete('restrict');
             $table->string('designation');
             $table->text('description');
             $table->text('objective');

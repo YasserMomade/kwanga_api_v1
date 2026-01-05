@@ -36,7 +36,7 @@ Route::prefix('v1')->group(function () {
         //Route::post('/verify_email', [AuthController::class, 'verifyEmail'])->name('auth.verifyEmail');
         Route::post('/resend_code', [AuthController::class, 'resendVerificationCode']);
         Route::post('/login', [AuthController::class, 'loginRequestOtp'])->middleware('throttle:5,1')->name('auth.Login');
-        Route::post('/login/verify_otp', [AuthController::class, 'loginVerifyOtp'])->middleware('throttle:5,1')->name('auth.Login');
+        Route::post('/verify_otp', [AuthController::class, 'loginVerifyOtp'])->middleware('throttle:5,1')->name('auth.Login');
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.Logout');
     });
 
@@ -81,6 +81,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', [LifeAreaController::class, 'show'])->name('lifeAreasDetails.byUser');
             Route::put('/{id}', [LifeAreaController::class, 'update'])->name('lifeAreas.update');
             Route::delete('/{id}', [LifeAreaController::class, 'destroy'])->name('lifeAreas.delete');
+            Route::patch('/{id}/reorder', [LifeAreaController::class, 'reorder'])->name('lifeareas.reorder');
         });
 
         //Proposito
@@ -177,14 +178,14 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('project_tasks')->group(function () {
             Route::get('/', [TaskController::class, 'projectOnlyTasks'])->name('projectAction.index');
-
+            Route::patch('/{id}/reorder', [TaskController::class, 'reorderProjectTask'])->name('tasks.reorder');
             Route::post('/', [TaskController::class, 'store'])->name('projectAction.store');
             Route::get('/{id}', [TaskController::class, 'show'])->name('projectAction.show');
             Route::put('/{id}', [TaskController::class, 'update'])->name('projectAction.update');
             Route::delete('/{id}', [TaskController::class, 'destroy'])->name('projectAction.delete');
             Route::post('/{id}/alter', [TaskController::class, 'alterstatus'])->name('projectAction.delete');
             Route::post('/{id}/move', [TaskController::class, 'moveToProject'])->name('projectAction.move');
-            Route::patch('/{id}/link_to_list', [TaskController::class, 'linkToActionList'])->name('projectAction.move');
+            Route::patch('/link_to_list', [TaskController::class, 'linkToActionList'])->name('projectAction.move.bulk');
             Route::post('/move_multiple_tasks', [TaskController::class, 'moveMultipleToProject'])->name('projectAction.delete');
             Route::get('/{project_id}/tasks', [TaskController::class, 'indexByProject']);
             Route::post('/delete_multiple', [TaskController::class, 'destroyMultiple'])->name('task.destroyMultiple');
@@ -217,7 +218,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/{communityId}/challenges', [ChallengeController::class, 'index']);
             Route::get('/{communityId}/challenges/{id}', [ChallengeController::class, 'show']);
             Route::put('/{communityId}/challenges/{id}', [ChallengeController::class, 'update']);
-            Route::patch('/{communityId}/challenges/{id}', [ChallengeController::class, 'close']);
+            Route::patch('/{communityId}/challenges/{id}/close', [ChallengeController::class, 'close']);
 
 
             // Participar de desafios + ranking e proogresso

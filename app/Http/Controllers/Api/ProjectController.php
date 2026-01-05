@@ -57,7 +57,7 @@ class ProjectController extends Controller
 
             $projects = Project::where('user_id', $userId)
                 ->where('is_archived', false)
-                ->with(['actions' => function ($q) {
+                ->with(['tasks' => function ($q) {
                     $q->orderBy('order_index');
                 }])
                 ->get();
@@ -78,7 +78,7 @@ class ProjectController extends Controller
 
             $projects = Project::where('user_id', $userId)
                 ->where('is_archived', true)
-                ->with(['actions' => function ($q) {
+                ->with(['tasks' => function ($q) {
                     $q->orderBy('order_index');
                 }])
                 ->get();
@@ -101,7 +101,7 @@ class ProjectController extends Controller
 
             $project = Project::where('id', $id)
                 ->where('user_id', $userId)
-                ->with(['actions' => function ($q) {
+                ->with(['tasks' => function ($q) {
                     $q->orderBy('order_index');
                 }])
                 ->first();

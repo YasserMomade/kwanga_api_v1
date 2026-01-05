@@ -934,10 +934,12 @@ class TaskController extends Controller
         }
     }
 
-    public function linkToActionList(Request $request, string $id): JsonResponse
+    public function linkToActionList(Request $request, ?string $id = null): JsonResponse
     {
         $request->validate([
-            'list_id' => 'required|string|exists:lists,id',
+            'list_id'   => 'required|string|exists:lists,id',
+            'task_ids'  => 'sometimes|array|min:1',
+            'task_ids.*' => 'required|string',
         ]);
 
         DB::beginTransaction();
@@ -945,23 +947,15 @@ class TaskController extends Controller
         try {
             $userId = $this->getUserId($request);
 
-            // Buscar task do user
-            $task = Task::where('id', $id)
-                ->where('user_id', $userId)
-                ->first();
 
-            if (! $task) {
+            $taskIds = $request->filled('task_ids')
+                ? $request->input('task_ids')
+                : array_filter([$id]);
+
+            if (empty($taskIds)) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Tarefa nao encontrada.'
-                ], 404);
-            }
-
-            //so permite ligar se for tarefa de projecto
-            if (is_null($task->project_id)) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Esta tarefa nao e de projeto. Apenas tarefas de projeto podem ser ligadas a uma lista de acao.'
+                    'message' => 'Selecione uma tarefa.'
                 ], 422);
             }
 
@@ -974,30 +968,57 @@ class TaskController extends Controller
             if (! $list) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Lista nao encontrada ou nao e do tipo action.'
+                    'message' => 'Lista nao encontrada'
                 ], 404);
             }
 
-            // Ligar task a lista action
-            $task->list_id = $list->id;
-            $task->save();
+            $tasks = Task::whereIn('id', $taskIds)
+                ->where('user_id', $userId)
+                ->get();
+
+            if ($tasks->count() !== count($taskIds)) {
+                $foundIds = $tasks->pluck('id')->all();
+                $missing  = array_values(array_diff($taskIds, $foundIds));
+
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Uma ou mais tarefas nao foram encontradas.',
+                    'missing_task_ids' => $missing,
+                ], 404);
+            }
+
+            $notProjectTasks = $tasks->filter(fn($t) => is_null($t->project_id));
+
+            if ($notProjectTasks->isNotEmpty()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Apenas tarefas de projeto podem ser ligadas a uma lista de acao.',
+                    'invalid_task_ids' => $notProjectTasks->pluck('id')->values(),
+                ], 422);
+            }
+
+            Task::whereIn('id', $taskIds)
+                ->where('user_id', $userId)
+                ->update(['list_id' => $list->id]);
 
             DB::commit();
 
-            $task->load('list:id,designation,type');
-
-            $data = $task->toArray();
+            $updated = Task::whereIn('id', $taskIds)
+                ->where('user_id', $userId)
+                ->with('list:id,designation,type')
+                ->get();
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Tarefa ligada com sucesso a lista de acao.',
-                'data'    => $data
+                'message' => "Tarefas alocada na lista . $list->designation.",
+                'data'    => $updated,
             ], 200);
         } catch (Exception $e) {
             DB::rollBack();
             return $this->errorResponse($e);
         }
     }
+
 
 
     // Eliminar uma unica tarefa
@@ -1097,8 +1118,7 @@ class TaskController extends Controller
             $tasks = Task::where('user_id', $userId)
                 ->whereNotNull('project_id')
                 ->with([
-                    'project:id,title',
-                    'list:id,designation'
+                    'project:id,title'
                 ])
                 ->orderByRaw('CASE WHEN order_index IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('order_index')
@@ -1127,7 +1147,7 @@ class TaskController extends Controller
         }
     }
 
-    // Eliminar varias tarefas
+
     // Eliminar varias tarefas
     public function destroyMultiple(Request $request): JsonResponse
     {
@@ -1169,6 +1189,208 @@ class TaskController extends Controller
             return $this->errorResponse($e);
         }
     }
+
+    public function reorderProjectTask(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'project_id' => 'required|string|exists:projects,id',
+            'index'   => 'required|integer|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $userId = $this->getUserId($request);
+
+            // Task do user
+            $task = Task::where('id', $id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (! $task) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Tarefa nao encontrada.'
+                ], 404);
+            }
+
+            // Só tarefas de projecto
+            if (is_null($task->project_id)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Apenas tarefas de projeto podem ser reordenadas.'
+                ], 422);
+            }
+
+            // Projeto alvo precisa ser do user
+            $project = Project::where('id', $request->project_id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (! $project) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Projeto nao encontrado.'
+                ], 404);
+            }
+
+            $fromProjectId = $task->project_id;
+            $toProjectId   = $project->id;
+
+            // Lock nas tarefas dos projectos envolvidos para evitar concorrência
+            Task::where('user_id', $userId)
+                ->whereIn('project_id', array_values(array_unique([$fromProjectId, $toProjectId])))
+                ->whereNotNull('order_index')
+                ->lockForUpdate()
+                ->get(['id']);
+
+            $oldIndex = is_null($task->order_index) ? null : (int) $task->order_index;
+            $toIndex  = (int) $request->to_index;
+
+            // Limita toIndex ao máximo permitido no destino (insere no fim se passar)
+            $maxDest = Task::where('user_id', $userId)
+                ->where('project_id', $toProjectId)
+                ->whereNotNull('order_index')
+                ->where('id', '!=', $task->id)
+                ->max('order_index');
+
+            $maxDest = is_null($maxDest) ? -1 : (int) $maxDest;
+
+            if ($toIndex > $maxDest + 1) {
+                $toIndex = $maxDest + 1;
+            }
+
+            // Se for o mesmo projeto e não mudou nada
+            if ($fromProjectId === $toProjectId && ! is_null($oldIndex) && $toIndex === $oldIndex) {
+                DB::commit();
+
+                $tasks = Task::where('user_id', $userId)
+                    ->where('project_id', $toProjectId)
+                    ->orderByRaw('CASE WHEN order_index IS NULL THEN 1 ELSE 0 END')
+                    ->orderBy('order_index')
+                    ->orderByDesc('created_at')
+                    ->get();
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Sem alterações na ordem.',
+                    'data'    => [
+                        'moved_task_id' => $task->id,
+                        'project_id'    => $toProjectId,
+                        'to_index'      => $toIndex,
+                        'tasks'         => $tasks,
+                    ],
+                ], 200);
+            }
+
+            // ===========================
+            // Caso 1: mesmo projeto
+            // ===========================
+            if ($fromProjectId === $toProjectId) {
+
+                // Se por algum motivo a tarefa está sem order_index, tratamos como inserção
+                if (is_null($oldIndex)) {
+                    // abre espaço no destino
+                    Task::where('user_id', $userId)
+                        ->where('project_id', $toProjectId)
+                        ->whereNotNull('order_index')
+                        ->where('order_index', '>=', $toIndex)
+                        ->update(['order_index' => DB::raw('order_index + 1')]);
+
+                    $task->order_index = $toIndex;
+                    $task->save();
+                } else {
+
+                    // 1) Tira a task do caminho para não violar unique(project_id, order_index)
+                    $sentinel = -999999;
+                    $task->order_index = $sentinel;
+                    $task->save();
+
+                    // 2) Ajusta intervalo
+                    if ($toIndex < $oldIndex) {
+                        // subiu: [toIndex .. oldIndex-1] descem +1
+                        Task::where('user_id', $userId)
+                            ->where('project_id', $toProjectId)
+                            ->whereNotNull('order_index')
+                            ->where('order_index', '>=', $toIndex)
+                            ->where('order_index', '<', $oldIndex)
+                            ->update(['order_index' => DB::raw('order_index + 1')]);
+                    } else {
+                        // desceu: [oldIndex+1 .. toIndex] sobem -1
+                        Task::where('user_id', $userId)
+                            ->where('project_id', $toProjectId)
+                            ->whereNotNull('order_index')
+                            ->where('order_index', '>', $oldIndex)
+                            ->where('order_index', '<=', $toIndex)
+                            ->update(['order_index' => DB::raw('order_index - 1')]);
+                    }
+
+                    // 3) Coloca a task no índice final
+                    $task->order_index = $toIndex;
+                    $task->save();
+                }
+            }
+            // ===========================
+            // Caso 2: move entre projetos (opcional)
+            // ===========================
+            else {
+                // Se a task não tinha índice, tratamos como "nova" no destino
+                // Se tinha, precisamos fechar buraco no projeto origem
+                $sentinel = -999999;
+
+                // 1) Tira a task do caminho (evita colisões no projeto origem/destino)
+                $task->order_index = $sentinel;
+                $task->save();
+
+                // 2) Fecha buraco no projeto origem (tudo que estava depois do oldIndex sobe -1)
+                if (! is_null($oldIndex)) {
+                    Task::where('user_id', $userId)
+                        ->where('project_id', $fromProjectId)
+                        ->whereNotNull('order_index')
+                        ->where('order_index', '>', $oldIndex)
+                        ->update(['order_index' => DB::raw('order_index - 1')]);
+                }
+
+                // 3) Abre espaço no projeto destino (>= toIndex desce +1)
+                Task::where('user_id', $userId)
+                    ->where('project_id', $toProjectId)
+                    ->whereNotNull('order_index')
+                    ->where('order_index', '>=', $toIndex)
+                    ->update(['order_index' => DB::raw('order_index + 1')]);
+
+                // 4) Move para o destino e seta índice final
+                $task->project_id  = $toProjectId;
+                $task->order_index = $toIndex;
+                $task->save();
+            }
+
+            DB::commit();
+
+            // Devolve a lista reordenada do projeto destino (útil pro front sincronizar)
+            $tasks = Task::where('user_id', $userId)
+                ->where('project_id', $toProjectId)
+                ->orderByRaw('CASE WHEN order_index IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('order_index')
+                ->orderByDesc('created_at')
+                ->get();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Ordem atualizada com sucesso.',
+                'data'    => [
+                    'moved_task_id' => $task->id,
+                    'project_id'    => $toProjectId,
+                    'to_index'      => $toIndex,
+                    'tasks'         => $tasks,
+                ],
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse($e);
+        }
+    }
+
+
 
     private function errorResponse(Exception $e): JsonResponse
     {

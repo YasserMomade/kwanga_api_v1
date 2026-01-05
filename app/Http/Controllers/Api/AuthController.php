@@ -279,49 +279,66 @@ class AuthController extends Controller
     }
 
 
-    public function registerRequestOtp(RequestOtpRequest $request, OtpService $otpService, Smsservice $sms)
-    {
-
+    public function registerRequestOtp(
+        RequestOtpRequest $request,
+        OtpService $otpService,
+        SmsService $sms
+    ) {
         $purpose = 'register';
-        $phone = Phone::normalizeMoz($request->phone);
+        $phone   = Phone::normalizeMoz($request->phone);
 
         DB::beginTransaction();
 
         try {
-
-            $existingUser  = User::where('phone', $phone)->first();
+            $existingUser = User::where('phone', $phone)->first();
 
             if ($existingUser && $existingUser->phone_verified_at) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Este número já tem uma conta registada. Faça login.'
                 ], 409);
             }
 
-            $user = User::firstOrCreate(
-                ['phone' => $phone],
+            $user = User::firstOrCreate([
+                'phone' => $phone
+            ]);
+
+            $otpService->ensureCanResend(
+                $otpService->getExisting($user, $purpose)
             );
 
-            $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
-
-            //Gerar otp
-
+            // Gerar OTP
             $generate = $otpService->generata($user, $purpose);
 
-            $sms->send($user->phone, "Código de verificação: {$generate['code']} (válido por {$otpService->minutes} min)");
+            DB::commit();
+
+            // Enviar SMS fora da transação
+            $sms->send(
+                $user->phone,
+                "Código de verificação: {$generate['code']} (válido por {$otpService->minutes} min)"
+            );
+
+            // return response()->json([
+            //     'status'  => true,
+            //     'message' => 'Conta criada com sucesso, faça a verificação.'
+            // ], 200);
+
             return response()->json([
                 'status' => true,
-                'message' => 'conta criada com sucesso, faça a verificação.'
+                'phone' => $user->phone,
+                'otp_message' => "Conta criada com sucesso, codigo otp: {$generate['code']} (válido por {$otpService->minutes} min) "
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Erro interno, volte a tentar mais tarde',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error'   => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
+
 
     public function registerVerifyOtp(RegisterVerifyOtpRequest $request, OtpService $otpService)
     {
@@ -382,6 +399,7 @@ class AuthController extends Controller
         try {
             $otpService->ensureCanResend($otpService->getExisting($user, $purpose));
             $generate = $otpService->generata($user, $purpose);
+
             DB::commit();
 
             $sms->send($user->phone, "Código de login: {$generate['code']} (válido por {$otpService->minutes} min)");
